@@ -12,12 +12,15 @@ const COLORES: [Color, string, string][] = [
 type Release = { tag_name: string; name: string; body: string; published_at: string; assets: { name: string; browser_download_url: string }[] };
 type Estado = { t: "buscando" } | { t: "listo"; releases: Release[] } | { t: "error"; msg: string };
 
-export default function Configuracion({ tema, onTema, color, onColor, ocultos, onRestaurar, onExportar, onImportar, onCerrar }: {
+export default function Configuracion({ tema, onTema, color, onColor, ocultos, onRestaurar, onExportar, onImportar, token, onToken, mios, onSubirMios, onCerrar }: {
   tema: Tema; onTema: (t: Tema) => void; color: Color; onColor: (c: Color) => void; ocultos: number; onRestaurar: () => void;
-  onExportar: () => Promise<void>; onImportar: (texto: string) => Promise<string | null>; onCerrar: () => void;
+  onExportar: () => Promise<void>; onImportar: (texto: string) => Promise<string | null>;
+  token: string; onToken: (t: string) => Promise<void>; mios: number; onSubirMios: () => Promise<string>; onCerrar: () => void;
 }) {
   const [upd, setUpd] = useState<Estado>({ t: "buscando" });
   const [aviso, setAviso] = useState("");
+  const [nuevoToken, setNuevoToken] = useState("");
+  const [avisoBase, setAvisoBase] = useState("");
 
   async function buscar() {
     setUpd({ t: "buscando" });
@@ -79,6 +82,38 @@ export default function Configuracion({ tema, onTema, color, onColor, ocultos, o
           )}
         </div>
         {aviso && <span className="sub" role="status">{aviso}</span>}
+      </section>
+
+      <section className="field" aria-label="Base compartida">
+        <h2>Base compartida</h2>
+        <span className="sub">
+          {token
+            ? "Eres editor: lo que crees, edites o borres en Alimentos se guarda para todos los que tienen la app, y vuelve aunque la reinstales."
+            : "Todos los que tienen la app reciben los alimentos de la base compartida. Para editarla, pega un token de GitHub con permiso de escribir en el repo."}
+        </span>
+        {token ? (
+          <div className="list">
+            <div className="row">
+              <div className="grow"><span className="name">Token guardado</span><span className="sub">Solo en este cel</span></div>
+              <button className="pill" onClick={() => { onToken(""); setAvisoBase(""); }}>Quitar</button>
+            </div>
+            {mios > 0 && (
+              <div className="row">
+                <div className="grow"><span className="name">Tus alimentos de este cel</span><span className="sub">{mios} que solo existen aquí</span></div>
+                <button className="pill solid" onClick={async () => { try { setAvisoBase(await onSubirMios()); } catch (e) { setAvisoBase((e as Error).message); } }}>Subir</button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <form style={{ display: "flex", gap: 8 }} onSubmit={(e) => { e.preventDefault(); if (nuevoToken.trim()) onToken(nuevoToken.trim()); setNuevoToken(""); }}>
+            <div className="box" style={{ flex: 1, height: 44 }}>
+              <label htmlFor="token" className="sr">Token de GitHub</label>
+              <input id="token" type="password" autoComplete="off" placeholder="github_pat_…" value={nuevoToken} onChange={(e) => setNuevoToken(e.target.value)} style={{ fontSize: 14, fontWeight: 500 }} />
+            </div>
+            <button className="pill solid" style={{ height: 44 }} disabled={!nuevoToken.trim()}>Guardar</button>
+          </form>
+        )}
+        {avisoBase && <span className="sub" role="status">{avisoBase}</span>}
       </section>
 
       <section className="field" aria-label="Actualizaciones">

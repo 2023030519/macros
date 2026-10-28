@@ -2,6 +2,10 @@
 
 Cada versión necesita su sección aquí: es lo que se ve en Configuración → Actualizaciones.
 
+## 0.4.0
+- Base compartida: al editar, crear o borrar un alimento con tu token puesto, el cambio queda para todos los que tienen la app y vuelve aunque la reinstales.
+- Configuración → Base compartida: guarda tu token y sube los alimentos que solo tienes en este cel.
+
 ## 0.3.0
 - Actualizaciones sin la PC: cada versión nueva se compila sola en GitHub.
 - Configuración → Actualizaciones muestra qué cambió en cada versión.

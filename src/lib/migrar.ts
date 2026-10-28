@@ -8,7 +8,7 @@ export const exportar = (p: Paquete) => JSON.stringify({ app: "macros", v: 1, ..
 
 const num = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x) && x >= 0;
 // "__proto__" como llave cambiaría el prototipo del objeto en vez de guardar un alimento
-const nombre = (x: unknown) => (typeof x === "string" && x.trim() && x.trim() !== "__proto__" ? x.trim().toLowerCase() : null);
+export const nombre = (x: unknown) => (typeof x === "string" && x.trim() && x.trim() !== "__proto__" ? x.trim().toLowerCase() : null);
 
 function porcion(x: unknown): Porcion | null | undefined {
   if (x === null || x === undefined) return null;
@@ -17,7 +17,7 @@ function porcion(x: unknown): Porcion | null | undefined {
 }
 
 // La app anterior guardaba [kcal, p, c, g, fibra] o con la porción al final; fibra podía venir en null.
-function fila(x: unknown): FoodRow | null {
+export function fila(x: unknown): FoodRow | null {
   if (!Array.isArray(x) || x.length < 5 || x.length > 6) return null;
   const [kcal, p, c, g, fibra] = x;
   const por = porcion(x[5]);

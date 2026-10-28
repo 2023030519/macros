@@ -5,6 +5,8 @@ name: Release APK
 on:
   push:
     branches: [main]
+    # la app escribe ahí los cambios de la base compartida; no hace falta compilar por eso
+    paths-ignore: ["data/**"]
   workflow_dispatch:
 
 permissions:

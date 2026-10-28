@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { DB, MEALS, type FoodRow, type MealId } from "./data/foods.ts";
 import { plan, type Perfil } from "./lib/calc.ts";
 import { hoy, sumarDias } from "./lib/dias.ts";
+import { VACIA, aplicarBase, bajar, editarBase, subir, type Base } from "./lib/base.ts";
 import { aplicarItems, cascadaRecetas, type Cambios } from "./lib/cascada.ts";
 import { compartir, nombreArchivo } from "./lib/compartir.ts";
 import { exportar, leer } from "./lib/migrar.ts";
@@ -41,6 +42,10 @@ export default function App() {
   const [config, setConfig] = useState(false);
   const [tema, setTema] = useState<Tema>("sistema");
   const [color, setColor] = useState<Color>("neutro");
+  // base compartida (data/alimentos.json en GitHub) y el token para escribirla; sin token solo se lee
+  const [base, setBase] = useState<Base>(VACIA);
+  const [token, setToken] = useState("");
+  const baseDB = aplicarBase(DB, base);
   const diaRef = useRef(dia);
   const toque = useRef<{ x: number; y: number } | null>(null);
   // nombres de la base que borraste; se pueden restaurar en Configuración
@@ -50,13 +55,16 @@ export default function App() {
 
   async function cargar() {
     const d = hoy();
-    const [p, m, r, mn, l, ds, t, oc, co] = await Promise.all([
+    const [p, m, r, mn, l, ds, t, oc, co, b, tk] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
       load<MenuSemanal>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
-      load<Color>("color", "neutro"),
+      load<Color>("color", "neutro"), load<Base>("base", VACIA), load<string>("token", ""),
     ]);
+    setBase(b); setToken(tk);
     setPerfil(p); setMios(m); setRecetas(r); setMenu(mn); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
     diaRef.current = d;
+    // sin internet se queda la última copia descargada
+    bajar(tk || undefined).then((r) => guardarBase(r.base)).catch(() => {});
   }
 
   useEffect(() => {
@@ -96,7 +104,7 @@ export default function App() {
   async function compartirPaquete(nombres: string[] | null) {
     const sel = <T,>(o: Record<string, T>) => (nombres ? Object.fromEntries(Object.entries(o).filter(([n]) => nombres.includes(n))) : o);
     // un alimento de la base sin editar no está en "mios": se comparte con sus valores de la base
-    const alimentos = nombres ? Object.fromEntries(nombres.filter((n) => !(n in recetas) && (mios[n] ?? DB[n])).map((n) => [n, mios[n] ?? DB[n]])) : mios;
+    const alimentos = nombres ? Object.fromEntries(nombres.filter((n) => !(n in recetas) && (mios[n] ?? baseDB[n])).map((n) => [n, mios[n] ?? baseDB[n]])) : mios;
     await compartir(nombreArchivo(nombres?.length === 1 ? nombres[0] : "alimentos-y-recetas"), exportar({ alimentos, recetas: sel(recetas) }));
   }
 
@@ -110,7 +118,7 @@ export default function App() {
     await save("mios", m);
     setMios(m);
     // lo que reemplaza algo que ya usabas se recalcula en cascada
-    const existe = (n: string) => n in mios || n in DB || n in recetas;
+    const existe = (n: string) => n in mios || n in baseDB || n in recetas;
     const cambios: Cambios = new Map([
       ...Object.entries(p.alimentos).filter(([n]) => existe(n)).map(([n, row]) => [n, { name: n, row }] as const),
       ...Object.values(p.recetas).filter((r) => existe(r.nombre)).map((r) => [r.nombre, { name: r.nombre, row: comoAlimento(r) }] as const),
@@ -151,14 +159,52 @@ export default function App() {
     if (cambioMenu) await guardarMenu(nm);
   }
 
+  async function guardarBase(b: Base) {
+    await save("base", b);
+    setBase(b);
+  }
+
+  // con token, editar o borrar un alimento cambia la base de todos; sin token (o sin internet) solo la de este cel
+  async function enLaBase(n: string, row: FoodRow | null, anterior: string | null) {
+    if (!token) return false;
+    try {
+      const msg = row ? (anterior && anterior !== n ? `Renombrar ${anterior} → ${n}` : `Guardar ${n}`) : `Borrar ${n}`;
+      await guardarBase(await subir(token, (b) => editarBase(b, n, row, anterior), `${msg} (desde la app)`));
+    } catch (e) {
+      alert(`No se pudo guardar en la base compartida: ${(e as Error).message} Se guardó solo en este cel.`);
+      return false;
+    }
+    // tu copia local ya no hace falta y taparía la de la base
+    if (n in mios || (anterior && anterior in mios)) {
+      const m = { ...mios };
+      delete m[n];
+      if (anterior) delete m[anterior];
+      await save("mios", m);
+      setMios(m);
+    }
+    return true;
+  }
+
+  async function subirMios() {
+    const n = Object.keys(mios).length;
+    await guardarBase(await subir(token, (b) => Object.entries(mios).reduce((acc, [k, row]) => editarBase(acc, k, row), b), `Subir ${n} alimentos (desde la app)`));
+    await save("mios", {});
+    setMios({});
+    return `Listo: ${n} alimentos ahora están en la base compartida.`;
+  }
+
   async function guardarAlimento(n: string, row: FoodRow, anterior: string | null) {
     // un nombre que nunca existió no lo usa nada: no hay qué recalcular
-    const usado = anterior !== null || n in mios || n in DB || n in recetas;
+    const usado = anterior !== null || n in mios || n in baseDB || n in recetas;
+    if (await enLaBase(n, row, anterior)) {
+      if (usado) await cascada(recetas, new Map([[anterior ?? n, { name: n, row }]]));
+      return;
+    }
     const m = { ...mios };
     if (anterior && anterior !== n) {
       delete m[anterior];
       // renombrar uno de la base: el nombre viejo se oculta para que no quede repetido
-      if (anterior in DB && !ocultos.includes(anterior)) await guardarOcultos([...ocultos, anterior]);
+      if (anterior in baseDB && !ocultos.includes(anterior)) await guardarOcultos([...ocultos, anterior]);
     }
     m[n] = row;
     await save("mios", m);
@@ -172,13 +218,14 @@ export default function App() {
       delete r[n];
       return guardarRecetas(r);
     }
+    if (await enLaBase(n, null, null)) return;
     if (n in mios) {
       const m = { ...mios };
       delete m[n];
       await save("mios", m);
       setMios(m);
       // era tu versión de uno de la base: lo que lo usa vuelve a los valores originales
-      if (n in DB && !ocultos.includes(n)) await cascada(recetas, new Map([[n, { name: n, row: DB[n] }]]));
+      if (n in baseDB && !ocultos.includes(n)) await cascada(recetas, new Map([[n, { name: n, row: baseDB[n] }]]));
       return;
     }
     await guardarOcultos([...ocultos, n]);
@@ -219,12 +266,13 @@ export default function App() {
         onTema={async (t) => { await save("tema", t); setTema(t); }}
         onColor={async (c) => { await save("color", c); setColor(c); }}
         onExportar={() => compartirPaquete(null)} onImportar={importar}
+        token={token} onToken={async (t) => { await save("token", t); setToken(t); }} mios={Object.keys(mios).length} onSubirMios={subirMios}
         onRestaurar={() => guardarOcultos([])} />
     );
   }
 
   const meta = plan(perfil);
-  const foods: Record<string, FoodRow> = { ...DB };
+  const foods: Record<string, FoodRow> = { ...baseDB };
   for (const n of ocultos) delete foods[n];
   for (const r of Object.values(recetas)) foods[r.nombre] = comoAlimento(r);
   const todo = { ...foods, ...mios };
