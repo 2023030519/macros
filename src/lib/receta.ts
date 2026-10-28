@@ -1,6 +1,6 @@
 import type { FoodRow } from "../data/foods.ts";
 
-// Un alimento con su cantidad y los macros ya calculados (copia: si luego editas el alimento, esto no cambia).
+// Un alimento con su cantidad y los macros ya calculados; si editas el alimento, lib/cascada.ts los recalcula.
 export type Item = { name: string; grams: number; kcal: number; p: number; c: number; g: number };
 export const CATEGORIAS = ["Desayuno", "Comida", "Cena", "Colación"] as const;
 // shortcut: la foto va dentro de la receta como JPEG chico en base64; si son muchas recetas con foto y la app tarda en abrir, pasarlas a archivos (@capacitor/filesystem).

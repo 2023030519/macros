@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { DB, MEALS, type FoodRow, type MealId } from "./data/foods.ts";
 import { plan, type Perfil } from "./lib/calc.ts";
 import { hoy, sumarDias } from "./lib/dias.ts";
-import { comoAlimento, sumar, type Receta } from "./lib/receta.ts";
+import { aplicarItems, cascadaRecetas, type Cambios } from "./lib/cascada.ts";
+import { comoAlimento, sumar, type Item, type Receta } from "./lib/receta.ts";
 import { diasRegistrados, load, remove, save, type Entrada } from "./lib/store.ts";
 import Alimentos from "./screens/Alimentos.tsx";
 import Hoy from "./screens/Hoy.tsx";
@@ -70,7 +71,34 @@ export default function App() {
     setOcultos(next);
   }
 
+  // Cambió un alimento o receta: recalcula las recetas, los registros de todos los días y el menú que lo usan.
+  async function cascada(rs: Record<string, Receta>, cambios: Cambios) {
+    const { recetas: nr, cambios: todos } = cascadaRecetas(rs, cambios);
+    if (rs !== recetas || Object.keys(nr).some((k) => nr[k] !== rs[k])) {
+      await save("recetas", nr);
+      setRecetas(nr);
+    }
+    for (const d of new Set([...dias, dia])) {
+      const l = d === dia ? log : await load<Entrada[]>(`log:${d}`, []);
+      const n = aplicarItems(l, todos);
+      if (!n) continue;
+      await save(`log:${d}`, n);
+      if (d === dia) setLog(n);
+    }
+    let cambioMenu = false;
+    const nm: MenuSemanal = {};
+    for (const [d, comidas] of Object.entries(menu)) {
+      const ms = Object.entries(comidas) as [MealId, Item][];
+      const n = aplicarItems(ms.map(([, it]) => it), todos);
+      if (n) cambioMenu = true;
+      nm[d] = n ? Object.fromEntries(ms.map(([m], i) => [m, n[i]])) : comidas;
+    }
+    if (cambioMenu) await guardarMenu(nm);
+  }
+
   async function guardarAlimento(n: string, row: FoodRow, anterior: string | null) {
+    // un nombre que nunca existió no lo usa nada: no hay qué recalcular
+    const usado = anterior !== null || n in mios || n in DB || n in recetas;
     const m = { ...mios };
     if (anterior && anterior !== n) {
       delete m[anterior];
@@ -80,6 +108,7 @@ export default function App() {
     m[n] = row;
     await save("mios", m);
     setMios(m);
+    if (usado) await cascada(recetas, new Map([[anterior ?? n, { name: n, row }]]));
   }
 
   async function borrarAlimento(n: string) {
@@ -92,7 +121,10 @@ export default function App() {
       const m = { ...mios };
       delete m[n];
       await save("mios", m);
-      return setMios(m);
+      setMios(m);
+      // era tu versión de uno de la base: lo que lo usa vuelve a los valores originales
+      if (n in DB && !ocultos.includes(n)) await cascada(recetas, new Map([[n, { name: n, row: DB[n] }]]));
+      return;
     }
     await guardarOcultos([...ocultos, n]);
   }
@@ -144,10 +176,13 @@ export default function App() {
     const actual = receta === null ? null : recetas[receta];
     return (
       <EditarReceta receta={actual} foods={todo} existe={(n) => n in todo} onNuevoAlimento={(n, r) => guardarAlimento(n, r, null)} onCancel={() => setReceta(undefined)}
-        onSave={(r, anterior) => {
+        onSave={async (r, anterior) => {
           const next = { ...recetas };
           if (anterior) delete next[anterior];
-          return guardarRecetas({ ...next, [r.nombre]: r });
+          next[r.nombre] = r;
+          if (anterior || r.nombre in todo) await cascada(next, new Map([[anterior ?? r.nombre, { name: r.nombre, row: comoAlimento(r) }]]));
+          else await guardarRecetas(next);
+          setReceta(undefined);
         }}
         onDelete={() => {
           const next = { ...recetas };
