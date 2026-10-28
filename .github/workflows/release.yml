@@ -1,0 +1,62 @@
+# Al subir a main con una "version" nueva en package.json: prueba, compila el APK y publica el release.
+# La app lo encuentra en Configuración → Actualizaciones.
+name: Release APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ¿Versión nueva?
+        id: v
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then echo "nueva=no" >> "$GITHUB_OUTPUT"; else echo "nueva=si" >> "$GITHUB_OUTPUT"; fi
+
+      - if: steps.v.outputs.nueva == 'si'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - if: steps.v.outputs.nueva == 'si'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - if: steps.v.outputs.nueva == 'si'
+        name: Notas del CHANGELOG
+        run: node scripts/notas.mjs > notas.md
+
+      - if: steps.v.outputs.nueva == 'si'
+        run: npm ci && npm test && npm run build && npx cap sync android
+
+      # Misma llave que el APK instalado en el cel; con otra, Android no deja actualizar.
+      - if: steps.v.outputs.nueva == 'si'
+        name: Llave de firma
+        run: |
+          if [ -z "$DEBUG_KEYSTORE" ]; then echo "::error::Falta el secreto DEBUG_KEYSTORE (ver CLAUDE.md)"; exit 1; fi
+          mkdir -p ~/.android && echo "$DEBUG_KEYSTORE" | base64 -d > ~/.android/debug.keystore
+        env:
+          DEBUG_KEYSTORE: ${{ secrets.DEBUG_KEYSTORE }}
+
+      - if: steps.v.outputs.nueva == 'si'
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+
+      - if: steps.v.outputs.nueva == 'si'
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk macros.apk
+          gh release create "v${{ steps.v.outputs.version }}" macros.apk --title "MacrOS ${{ steps.v.outputs.version }}" --notes-file notas.md

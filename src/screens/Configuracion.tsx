@@ -1,29 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { REPO, esMasNueva } from "../lib/version.ts";
 import { Seg } from "../ui.tsx";
 
 export type Tema = "sistema" | "claro" | "oscuro";
-type Estado = { t: "nada" } | { t: "buscando" } | { t: "al-dia" } | { t: "nueva"; version: string; url: string } | { t: "error"; msg: string };
+export type Color = "neutro" | "azul" | "morado" | "rosa" | "verde";
+// muestra del color en el botón; los valores reales (claro/oscuro) están en styles.css
+const COLORES: [Color, string, string][] = [
+  ["neutro", "Neutro", "#121212"], ["azul", "Azul", "#2456D6"], ["morado", "Morado", "#6B3FD0"], ["rosa", "Rosa", "#C0266F"], ["verde", "Verde", "#147A57"],
+];
 
-export default function Configuracion({ tema, onTema, ocultos, onRestaurar, onCerrar }: {
-  tema: Tema; onTema: (t: Tema) => void; ocultos: number; onRestaurar: () => void; onCerrar: () => void;
+type Release = { tag_name: string; name: string; body: string; published_at: string; assets: { name: string; browser_download_url: string }[] };
+type Estado = { t: "buscando" } | { t: "listo"; releases: Release[] } | { t: "error"; msg: string };
+
+export default function Configuracion({ tema, onTema, color, onColor, ocultos, onRestaurar, onExportar, onImportar, onCerrar }: {
+  tema: Tema; onTema: (t: Tema) => void; color: Color; onColor: (c: Color) => void; ocultos: number; onRestaurar: () => void;
+  onExportar: () => Promise<void>; onImportar: (texto: string) => Promise<string | null>; onCerrar: () => void;
 }) {
-  const [upd, setUpd] = useState<Estado>({ t: "nada" });
+  const [upd, setUpd] = useState<Estado>({ t: "buscando" });
+  const [aviso, setAviso] = useState("");
 
   async function buscar() {
     setUpd({ t: "buscando" });
     try {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
-      if (!res.ok) throw new Error(res.status === 404 ? "No hay versiones publicadas (o el repo es privado)." : `GitHub respondió ${res.status}.`);
-      const rel = await res.json();
-      const apk = rel.assets?.find((a: { name: string }) => a.name.endsWith(".apk"));
-      if (!esMasNueva(rel.tag_name, __VERSION__)) return setUpd({ t: "al-dia" });
-      if (!apk) throw new Error(`La versión ${rel.tag_name} no trae APK.`);
-      setUpd({ t: "nueva", version: rel.tag_name, url: apk.browser_download_url });
+      const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=15`);
+      if (!res.ok) throw new Error(`GitHub respondió ${res.status}.`);
+      setUpd({ t: "listo", releases: await res.json() });
     } catch (e) {
       setUpd({ t: "error", msg: e instanceof TypeError ? "Sin conexión." : (e as Error).message });
     }
   }
+  useEffect(() => { buscar(); }, []);
+
+  const ultima = upd.t === "listo" ? upd.releases[0] : undefined;
+  const apk = ultima && esMasNueva(ultima.tag_name, __VERSION__) ? ultima.assets.find((a) => a.name.endsWith(".apk")) : undefined;
 
   return (
     <main className="screen" style={{ paddingBottom: 40, gap: 18 }}>
@@ -35,37 +44,73 @@ export default function Configuracion({ tema, onTema, ocultos, onRestaurar, onCe
       <section className="field" aria-label="Apariencia">
         <h2>Apariencia</h2>
         <Seg label="Tema" value={tema} options={[["sistema", "Sistema"], ["claro", "Claro"], ["oscuro", "Oscuro"]]} onChange={onTema} />
+        <div role="group" aria-label="Color" style={{ display: "flex", gap: 10, paddingTop: 6 }}>
+          {COLORES.map(([id, label, hex]) => (
+            <button key={id} aria-label={label} aria-pressed={color === id} onClick={() => onColor(id)}
+              style={{ width: 44, height: 44, borderRadius: 99, background: hex, border: "3px solid var(--bg)", boxShadow: color === id ? "0 0 0 2px var(--text)" : "0 0 0 1px var(--line)" }} />
+          ))}
+        </div>
       </section>
 
-      {ocultos > 0 && (
-        <section className="field" aria-label="Datos">
-          <h2>Datos</h2>
-          <div className="list">
+      <section className="field" aria-label="Datos">
+        <h2>Datos</h2>
+        <div className="list">
+          <div className="row">
+            <div className="grow"><span className="name">Compartir mis alimentos y recetas</span><span className="sub">Archivo para pasarlos a otro teléfono</span></div>
+            <button className="pill" onClick={() => onExportar().catch(() => {})}>Compartir</button>
+          </div>
+          <div className="row">
+            <div className="grow"><span className="name">Importar</span><span className="sub">De otro MacrOS o de la app anterior (userDB)</span></div>
+            <label className="pill" style={{ cursor: "pointer" }}>
+              Elegir archivo
+              <input type="file" accept=".json,application/json,text/plain" className="sr" onChange={async (e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                try { setAviso((await onImportar(await f.text())) ?? ""); } catch (err) { setAviso((err as Error).message); }
+              }} />
+            </label>
+          </div>
+          {ocultos > 0 && (
             <div className="row">
               <div className="grow"><span className="name">Alimentos borrados de la base</span><span className="sub">{ocultos} ocultos</span></div>
               <button className="pill" onClick={onRestaurar}>Restaurar</button>
             </div>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+        {aviso && <span className="sub" role="status">{aviso}</span>}
+      </section>
 
       <section className="field" aria-label="Actualizaciones">
-        <h2>App</h2>
+        <h2>Actualizaciones</h2>
         <div className="list">
           <div className="row">
             <div className="grow">
               <span className="name">MacrOS {__VERSION__}</span>
               <span className="sub" role="status">
-                {upd.t === "buscando" ? "Buscando…" : upd.t === "al-dia" ? "Tienes la última versión." : upd.t === "nueva" ? `Hay una versión nueva: ${upd.version}` : upd.t === "error" ? upd.msg : "Las versiones se publican en GitHub."}
+                {upd.t === "buscando" ? "Buscando…" : upd.t === "error" ? upd.msg : apk ? `Hay una versión nueva: ${ultima!.tag_name}` : "Tienes la última versión."}
               </span>
             </div>
-            {upd.t === "nueva"
-              // abre el navegador del cel, que descarga el APK; Android pide confirmar la instalación
-              ? <button className="pill solid" onClick={() => { location.href = upd.url; }}>Descargar</button>
-              : <button className="pill" disabled={upd.t === "buscando"} onClick={buscar}>Buscar actualización</button>}
+            {apk
+              // abre el navegador del cel, que descarga el APK; Android pide confirmar la instalación y conserva tus datos
+              ? <button className="pill solid" onClick={() => { location.href = apk.browser_download_url; }}>Descargar</button>
+              : <button className="pill" disabled={upd.t === "buscando"} onClick={buscar}>Buscar</button>}
           </div>
         </div>
-        <span className="sub">Al instalar la versión nueva se conservan tus datos.</span>
+        {upd.t === "listo" && upd.releases.map((r) => {
+          const nueva = esMasNueva(r.tag_name, __VERSION__);
+          const actual = !nueva && !esMasNueva(__VERSION__, r.tag_name);
+          return (
+            <article key={r.tag_name} className="card" style={{ padding: 16, gap: 8, borderRadius: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <b style={{ fontSize: 15 }}>{r.tag_name}</b>
+                <span className="sub">{new Date(r.published_at).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>
+                {(nueva || actual) && <span className="badge" style={nueva ? { background: "var(--accent)", color: "var(--on-accent)" } : undefined}>{nueva ? "Nueva" : "Instalada"}</span>}
+              </div>
+              <span style={{ fontSize: 14, whiteSpace: "pre-line", lineHeight: 1.45 }}>{r.body?.trim() || "Sin notas."}</span>
+            </article>
+          );
+        })}
       </section>
     </main>
   );

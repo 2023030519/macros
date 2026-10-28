@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DB, MEALS, type FoodRow, type MealId } from "./data/foods.ts";
 import { plan, type Perfil } from "./lib/calc.ts";
 import { hoy, sumarDias } from "./lib/dias.ts";
 import { aplicarItems, cascadaRecetas, type Cambios } from "./lib/cascada.ts";
+import { compartir, nombreArchivo } from "./lib/compartir.ts";
+import { exportar, leer } from "./lib/migrar.ts";
 import { comoAlimento, sumar, type Item, type Receta } from "./lib/receta.ts";
 import { diasRegistrados, load, remove, save, type Entrada } from "./lib/store.ts";
 import Alimentos from "./screens/Alimentos.tsx";
 import Hoy from "./screens/Hoy.tsx";
 import Menu, { type MenuSemanal } from "./screens/Menu.tsx";
-import Configuracion, { type Tema } from "./screens/Configuracion.tsx";
+import Configuracion, { type Color, type Tema } from "./screens/Configuracion.tsx";
 import Objetivos, { TusDatos } from "./screens/Objetivos.tsx";
 import Recetas, { EditarReceta } from "./screens/Recetas.tsx";
 import { uid } from "./ui.tsx";
@@ -38,6 +40,9 @@ export default function App() {
   const [simulando, setSimulando] = useState(false);
   const [config, setConfig] = useState(false);
   const [tema, setTema] = useState<Tema>("sistema");
+  const [color, setColor] = useState<Color>("neutro");
+  const diaRef = useRef(dia);
+  const toque = useRef<{ x: number; y: number } | null>(null);
   // nombres de la base que borraste; se pueden restaurar en Configuración
   const [ocultos, setOcultos] = useState<string[]>([]);
   // undefined = no se edita; null = receta nueva
@@ -45,17 +50,20 @@ export default function App() {
 
   async function cargar() {
     const d = hoy();
-    const [p, m, r, mn, l, ds, t, oc] = await Promise.all([
+    const [p, m, r, mn, l, ds, t, oc, co] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
       load<MenuSemanal>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
+      load<Color>("color", "neutro"),
     ]);
-    setPerfil(p); setMios(m); setRecetas(r); setMenu(mn); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setDia(d); setReady(true);
+    setPerfil(p); setMios(m); setRecetas(r); setMenu(mn); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
+    diaRef.current = d;
   }
 
   useEffect(() => {
     cargar();
-    // al volver a la app recarga, por si ya cambió el día
-    const onVis = () => document.visibilityState === "visible" && cargar();
+    // al volver a la app, si ya cambió el día, carga el registro del día nuevo
+    // (no siempre: volver del selector de archivos o de compartir pisaría lo que se está guardando)
+    const onVis = () => document.visibilityState === "visible" && hoy() !== diaRef.current && cargar();
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
@@ -64,7 +72,54 @@ export default function App() {
     const html = document.documentElement;
     if (tema === "sistema") delete html.dataset.theme;
     else html.dataset.theme = tema === "claro" ? "light" : "dark";
-  }, [tema]);
+    html.dataset.color = color;
+  }, [tema, color]);
+
+  function irA(t: Tab, desde = "0px") {
+    document.documentElement.style.setProperty("--desde", desde);
+    setTab(t);
+    window.scrollTo(0, 0);
+  }
+
+  // deslizar a los lados cambia de pestaña; no dentro de menús, campos ni filas que se desplazan solas
+  function finToque(e: React.TouchEvent) {
+    const s = toque.current;
+    toque.current = null;
+    if (!s) return;
+    const dx = e.changedTouches[0].clientX - s.x;
+    const dy = e.changedTouches[0].clientY - s.y;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < 2 * Math.abs(dy)) return;
+    const i = TABS.findIndex(([t]) => t === tab) + (dx < 0 ? 1 : -1);
+    if (TABS[i]) irA(TABS[i][0], dx < 0 ? "24px" : "-24px");
+  }
+
+  async function compartirPaquete(nombres: string[] | null) {
+    const sel = <T,>(o: Record<string, T>) => (nombres ? Object.fromEntries(Object.entries(o).filter(([n]) => nombres.includes(n))) : o);
+    // un alimento de la base sin editar no está en "mios": se comparte con sus valores de la base
+    const alimentos = nombres ? Object.fromEntries(nombres.filter((n) => !(n in recetas) && (mios[n] ?? DB[n])).map((n) => [n, mios[n] ?? DB[n]])) : mios;
+    await compartir(nombreArchivo(nombres?.length === 1 ? nombres[0] : "alimentos-y-recetas"), exportar({ alimentos, recetas: sel(recetas) }));
+  }
+
+  async function importar(texto: string) {
+    const p = leer(texto);
+    const na = Object.keys(p.alimentos).length;
+    const nr = Object.keys(p.recetas).length;
+    const repetidos = [...Object.keys(p.alimentos), ...Object.keys(p.recetas)].filter((n) => n in mios || n in recetas).length;
+    if (!confirm(`Importar ${na} alimentos y ${nr} recetas?${repetidos ? ` ${repetidos} ya existen y se reemplazan.` : ""}`)) return null;
+    const m = { ...mios, ...p.alimentos };
+    await save("mios", m);
+    setMios(m);
+    // lo que reemplaza algo que ya usabas se recalcula en cascada
+    const existe = (n: string) => n in mios || n in DB || n in recetas;
+    const cambios: Cambios = new Map([
+      ...Object.entries(p.alimentos).filter(([n]) => existe(n)).map(([n, row]) => [n, { name: n, row }] as const),
+      ...Object.values(p.recetas).filter((r) => existe(r.nombre)).map((r) => [r.nombre, { name: r.nombre, row: comoAlimento(r) }] as const),
+    ]);
+    const rs = { ...recetas, ...p.recetas };
+    if (cambios.size) await cascada(rs, cambios);
+    else { await save("recetas", rs); setRecetas(rs); }
+    return `Listo: ${na} alimentos y ${nr} recetas.${p.invalidos ? ` ${p.invalidos} venían con datos inválidos y no se importaron.` : ""}`;
+  }
 
   async function guardarOcultos(next: string[]) {
     await save("ocultos", next);
@@ -160,8 +215,10 @@ export default function App() {
   if (simulando) return <TusDatos perfil={perfil} simular onCancel={() => setSimulando(false)} />;
   if (config) {
     return (
-      <Configuracion tema={tema} ocultos={ocultos.length} onCerrar={() => setConfig(false)}
+      <Configuracion tema={tema} color={color} ocultos={ocultos.length} onCerrar={() => setConfig(false)}
         onTema={async (t) => { await save("tema", t); setTema(t); }}
+        onColor={async (c) => { await save("color", c); setColor(c); }}
+        onExportar={() => compartirPaquete(null)} onImportar={importar}
         onRestaurar={() => guardarOcultos([])} />
     );
   }
@@ -194,15 +251,21 @@ export default function App() {
 
   return (
     <>
+      <div key={tab} className="entrar" style={{ minHeight: "100vh" }}
+        onTouchStart={(e) => {
+          const t = e.target as HTMLElement;
+          toque.current = t.closest(".sheet, .scrim, .chips, input, select, textarea") ? null : { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }}
+        onTouchEnd={finToque}>
       {tab === "hoy" && (
         <Hoy dia={dia} log={log} dias={dias} meta={meta}
-          onAdd={(m) => { setMeal(m); setTab("alimentos"); }}
+          onAdd={(m) => { setMeal(m); irA("alimentos"); }}
           onRemove={(id) => guardarLog(log.filter((e) => e.id !== id))} />
       )}
       {tab === "alimentos" && (
         <Alimentos foods={foods} mios={mios} recetas={new Set(Object.keys(recetas))} meal={meal} setMeal={setMeal} consumidas={sumar(log).kcal} meta={meta.kcal_objetivo}
           onAdd={(e) => guardarLog([...log, e])}
-          onGuardar={guardarAlimento} onBorrar={borrarAlimento} onEditarReceta={setReceta} />
+          onGuardar={guardarAlimento} onBorrar={borrarAlimento} onEditarReceta={setReceta} onCompartir={(n) => compartirPaquete([n]).catch(() => {})} />
       )}
       {tab === "recetas" && <Recetas recetas={recetas} onEditar={setReceta} />}
       {tab === "menu" && (
@@ -234,14 +297,15 @@ export default function App() {
               return it ? [{ ...it, id: uid(), meal: m.id }] : [];
             });
             await guardarLog([...log, ...nuevas]);
-            setTab("hoy");
+            irA("hoy");
           }} />
       )}
       {tab === "objetivos" && <Objetivos perfil={perfil} onObjetivo={(o) => guardarPerfil({ ...perfil, objetivo: o })} onEditar={() => setEditando(true)} onSimular={() => setSimulando(true)} onConfig={() => setConfig(true)} />}
+      </div>
 
       <nav className="tabs" aria-label="Navegación principal">
         {TABS.map(([id, label, icon]) => (
-          <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}>{icon}{label}</button>
+          <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => irA(id)}>{icon}{label}</button>
         ))}
       </nav>
     </>

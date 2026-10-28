@@ -36,7 +36,7 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
           <div style={{ position: "relative", width: 124, height: 124, flexShrink: 0 }}>
             <svg width="124" height="124" viewBox="0 0 124 124" role="img" aria-label={`${fmt(t.kcal)} de ${fmt(meta.kcal_objetivo)} kcal consumidas`}>
               <circle cx="62" cy="62" r="54" fill="none" stroke="var(--surface2)" strokeWidth="10" />
-              <circle cx="62" cy="62" r="54" fill="none" stroke={resto < 0 ? "var(--warn)" : "var(--text)"} strokeWidth="10" strokeLinecap={arco > 0 ? "round" : "butt"} strokeDasharray={`${arco} 339.3`} transform="rotate(-90 62 62)" />
+              <circle cx="62" cy="62" r="54" fill="none" stroke={resto < 0 ? "var(--warn)" : "var(--accent)"} strokeWidth="10" strokeLinecap={arco > 0 ? "round" : "butt"} strokeDasharray={`${arco} 339.3`} transform="rotate(-90 62 62)" />
             </svg>
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
               <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em" }}>{fmt(Math.abs(resto))}</span>

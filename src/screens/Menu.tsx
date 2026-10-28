@@ -52,10 +52,10 @@ export default function Menu({ dia, menu, meta, foods, onSet, onDuplicar, onApli
           const pct = Math.min(100, (sumar(delDia(d)).kcal / meta.kcal_objetivo) * 100);
           return (
             <button key={d} aria-pressed={on} aria-label={fecha(d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric" })} onClick={() => setSel(d)}
-              style={{ height: 72, borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: 0, border: on ? 0 : "1px solid var(--line)", background: on ? "var(--text)" : "var(--surface)", color: on ? "var(--inv)" : "var(--text)", outline: d === dia && !on ? "2px dashed var(--line)" : undefined }}>
+              style={{ height: 72, borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: 0, border: on ? 0 : "1px solid var(--line)", background: on ? "var(--accent)" : "var(--surface)", color: on ? "var(--on-accent)" : "var(--text)", outline: d === dia && !on ? "2px dashed var(--line)" : undefined }}>
               <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.75 }}>{"DLMMJVS"[fecha(d).getDay()]}</span>
               <span style={{ fontSize: 17, fontWeight: 700 }}>{fecha(d).getDate()}</span>
-              <span style={{ display: "block", height: 3, borderRadius: 9, width: Math.max(pct * 0.22, 4), background: on ? "var(--inv)" : pct ? "var(--text)" : "var(--line)" }} />
+              <span style={{ display: "block", height: 3, borderRadius: 9, width: Math.max(pct * 0.22, 4), background: on ? "var(--on-accent)" : pct ? "var(--accent)" : "var(--line)" }} />
             </button>
           );
         })}
@@ -66,7 +66,7 @@ export default function Menu({ dia, menu, meta, foods, onSet, onDuplicar, onApli
           <span><b style={{ fontSize: 26, letterSpacing: "-0.03em" }}>{fmt(t.kcal)}</b> <span className="sub" style={{ fontSize: 13 }}>/ {fmt(meta.kcal_objetivo)} kcal planeadas</span></span>
           <span style={{ fontSize: 12, fontWeight: 600, color: libres < 0 ? "var(--warn)" : undefined }}>{libres < 0 ? `${fmt(-libres)} de más` : `${fmt(libres)} libres`}</span>
         </div>
-        <div className="track" style={{ height: 8 }}><div style={{ width: `${Math.min(100, (t.kcal / meta.kcal_objetivo) * 100)}%`, background: "var(--text)" }} /></div>
+        <div className="track" style={{ height: 8 }}><div style={{ width: `${Math.min(100, (t.kcal / meta.kcal_objetivo) * 100)}%`, background: "var(--accent)" }} /></div>
         <div className="macros" style={{ justifyContent: "space-between", fontSize: 12 }}>
           <span><i className="dot bg-p" />P {fmt(t.p)} / {fmt(meta.prot)} g</span>
           <span><i className="dot bg-c" />C {fmt(t.c)} / {fmt(meta.carbs)} g</span>

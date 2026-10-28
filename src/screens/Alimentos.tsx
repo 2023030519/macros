@@ -7,7 +7,7 @@ type Fuente = "General" | "Producto" | "Receta" | "Mío";
 type Props = {
   foods: Record<string, FoodRow>; mios: Record<string, FoodRow>; recetas: Set<string>; meal: MealId; setMeal: (m: MealId) => void;
   consumidas: number; meta: number; onAdd: (e: Entrada) => Promise<void>;
-  onGuardar: (name: string, row: FoodRow, anterior: string | null) => Promise<void>; onBorrar: (name: string) => Promise<void>; onEditarReceta: (name: string) => void;
+  onGuardar: (name: string, row: FoodRow, anterior: string | null) => Promise<void>; onBorrar: (name: string) => Promise<void>; onEditarReceta: (name: string) => void; onCompartir: (name: string) => void;
 };
 
 export const sinAcentos = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
@@ -25,7 +25,7 @@ function MealSelect({ id, meal, setMeal }: { id: string; meal: MealId; setMeal: 
   );
 }
 
-export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumidas, meta, onAdd, onGuardar, onBorrar, onEditarReceta }: Props) {
+export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumidas, meta, onAdd, onGuardar, onBorrar, onEditarReceta, onCompartir }: Props) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Fuente | "Todos">("Todos");
   const [sel, setSel] = useState<string | null>(null);
@@ -109,6 +109,7 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
             else setNuevo({ nombre: opciones, row: mios[opciones] ?? foods[opciones], anterior: opciones });
             setOpciones(null);
           }}>Editar</button>
+          <button className="secondary" onClick={() => { onCompartir(opciones); setOpciones(null); }}>Compartir</button>
           <button className="secondary" style={{ color: "var(--warn)" }} onClick={async () => {
             const aviso = opciones in mios && opciones in foods ? "Se borra tu versión y vuelve la original de la base."
               : opciones in mios || recetas.has(opciones) ? "No se puede deshacer." : "Lo puedes restaurar en Configuración.";
@@ -173,8 +174,8 @@ function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onCl
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div className="kv"><span className="muted">Tu día después</span><b>{fmt(consumidas + e.kcal)} / {fmt(meta)} kcal</b></div>
         <div className="track" style={{ height: 8, display: "flex" }}>
-          <span style={{ width: `${Math.min(100, (consumidas / meta) * 100)}%`, background: "var(--text)" }} />
-          <span style={{ width: `${Math.min(100, (e.kcal / meta) * 100)}%`, background: "var(--text)", opacity: 0.35 }} />
+          <span style={{ width: `${Math.min(100, (consumidas / meta) * 100)}%`, background: "var(--accent)" }} />
+          <span style={{ width: `${Math.min(100, (e.kcal / meta) * 100)}%`, background: "var(--accent)", opacity: 0.35 }} />
         </div>
       </div>
 
