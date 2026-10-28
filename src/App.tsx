@@ -10,11 +10,14 @@ import { comoAlimento, sumar, type Item, type Receta } from "./lib/receta.ts";
 import { diasRegistrados, load, remove, save, type Entrada } from "./lib/store.ts";
 import Alimentos from "./screens/Alimentos.tsx";
 import Hoy from "./screens/Hoy.tsx";
-import Menu, { type MenuSemanal } from "./screens/Menu.tsx";
+import Menu from "./screens/Menu.tsx";
+import Actualizaciones from "./screens/Actualizaciones.tsx";
+import { normalizarMenu, type MenuSemanal } from "./lib/menu.ts";
+import { apkNuevo, buscarReleases, type EstadoUpd } from "./lib/version.ts";
 import Configuracion, { type Color, type Tema } from "./screens/Configuracion.tsx";
 import Objetivos, { TusDatos } from "./screens/Objetivos.tsx";
 import Recetas, { EditarReceta } from "./screens/Recetas.tsx";
-import { uid } from "./ui.tsx";
+import { avisar, uid } from "./ui.tsx";
 
 type Tab = "hoy" | "alimentos" | "recetas" | "menu" | "objetivos";
 const ico = { fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
@@ -40,6 +43,10 @@ export default function App() {
   const [editando, setEditando] = useState(false);
   const [simulando, setSimulando] = useState(false);
   const [config, setConfig] = useState(false);
+  const [verUpd, setVerUpd] = useState(false);
+  const [upd, setUpd] = useState<EstadoUpd>({ t: "buscando" });
+  // tocar la pestaña en la que ya estás la recarga desde cero
+  const [refresco, setRefresco] = useState(0);
   const [tema, setTema] = useState<Tema>("sistema");
   const [color, setColor] = useState<Color>("neutro");
   // base compartida (data/alimentos.json en GitHub) y el token para escribirla; sin token solo se lee
@@ -57,14 +64,16 @@ export default function App() {
     const d = hoy();
     const [p, m, r, mn, l, ds, t, oc, co, b, tk] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
-      load<MenuSemanal>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
+      load<Record<string, Record<string, Item>>>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
       load<Color>("color", "neutro"), load<Base>("base", VACIA), load<string>("token", ""),
     ]);
     setBase(b); setToken(tk);
-    setPerfil(p); setMios(m); setRecetas(r); setMenu(mn); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
+    setPerfil(p); setMios(m); setRecetas(r); setMenu(normalizarMenu(mn)); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
     diaRef.current = d;
     // sin internet se queda la última copia descargada
     bajar(tk || undefined).then((r) => guardarBase(r.base)).catch(() => {});
+    setUpd({ t: "buscando" });
+    buscarReleases().then(setUpd);
   }
 
   useEffect(() => {
@@ -82,6 +91,12 @@ export default function App() {
     else html.dataset.theme = tema === "claro" ? "light" : "dark";
     html.dataset.color = color;
   }, [tema, color]);
+
+  function refrescar() {
+    setRefresco((r) => r + 1);
+    window.scrollTo(0, 0);
+    cargar();
+  }
 
   function irA(t: Tab, desde = "0px") {
     document.documentElement.style.setProperty("--desde", desde);
@@ -151,10 +166,12 @@ export default function App() {
     let cambioMenu = false;
     const nm: MenuSemanal = {};
     for (const [d, comidas] of Object.entries(menu)) {
-      const ms = Object.entries(comidas) as [MealId, Item][];
-      const n = aplicarItems(ms.map(([, it]) => it), todos);
-      if (n) cambioMenu = true;
-      nm[d] = n ? Object.fromEntries(ms.map(([m], i) => [m, n[i]])) : comidas;
+      nm[d] = {};
+      for (const [m, its] of Object.entries(comidas) as [MealId, Item[]][]) {
+        const n = aplicarItems(its, todos);
+        if (n) cambioMenu = true;
+        nm[d][m] = n ?? its;
+      }
     }
     if (cambioMenu) await guardarMenu(nm);
   }
@@ -198,7 +215,7 @@ export default function App() {
     const usado = anterior !== null || n in mios || n in baseDB || n in recetas;
     if (await enLaBase(n, row, anterior)) {
       if (usado) await cascada(recetas, new Map([[anterior ?? n, { name: n, row }]]));
-      return;
+      return avisar("Guardado para todos");
     }
     const m = { ...mios };
     if (anterior && anterior !== n) {
@@ -210,15 +227,17 @@ export default function App() {
     await save("mios", m);
     setMios(m);
     if (usado) await cascada(recetas, new Map([[anterior ?? n, { name: n, row }]]));
+    avisar(anterior ? "Alimento editado" : "Alimento guardado");
   }
 
   async function borrarAlimento(n: string) {
     if (n in recetas) {
       const r = { ...recetas };
       delete r[n];
-      return guardarRecetas(r);
+      await guardarRecetas(r);
+      return avisar("Receta borrada");
     }
-    if (await enLaBase(n, null, null)) return;
+    if (await enLaBase(n, null, null)) return avisar("Borrado para todos");
     if (n in mios) {
       const m = { ...mios };
       delete m[n];
@@ -226,9 +245,10 @@ export default function App() {
       setMios(m);
       // era tu versión de uno de la base: lo que lo usa vuelve a los valores originales
       if (n in baseDB && !ocultos.includes(n)) await cascada(recetas, new Map([[n, { name: n, row: baseDB[n] }]]));
-      return;
+      return avisar("Borrado");
     }
     await guardarOcultos([...ocultos, n]);
+    avisar("Borrado (se puede restaurar en Configuración)");
   }
 
   async function guardarLog(next: Entrada[]) {
@@ -244,6 +264,7 @@ export default function App() {
     await save("perfil", p);
     setPerfil(p);
     setEditando(false);
+    avisar("Datos guardados");
   }
 
   async function guardarRecetas(next: Record<string, Receta>) {
@@ -260,12 +281,13 @@ export default function App() {
   if (!ready) return null;
   if (!perfil || editando) return <TusDatos perfil={perfil} onSave={guardarPerfil} onCancel={perfil ? () => setEditando(false) : undefined} />;
   if (simulando) return <TusDatos perfil={perfil} simular onCancel={() => setSimulando(false)} />;
+  if (verUpd) return <Actualizaciones upd={upd} onCerrar={() => setVerUpd(false)} onBuscar={() => { setUpd({ t: "buscando" }); buscarReleases().then(setUpd); }} />;
   if (config) {
     return (
-      <Configuracion tema={tema} color={color} ocultos={ocultos.length} onCerrar={() => setConfig(false)}
+      <Configuracion upd={upd} onActualizaciones={() => setVerUpd(true)} tema={tema} color={color} ocultos={ocultos.length} onCerrar={() => setConfig(false)}
         onTema={async (t) => { await save("tema", t); setTema(t); }}
         onColor={async (c) => { await save("color", c); setColor(c); }}
-        onExportar={() => compartirPaquete(null)} onImportar={importar}
+        onExportar={() => compartirPaquete(null)} onImportar={async (t) => { const r = await importar(t); if (r) avisar("Importado"); return r; }}
         token={token} onToken={async (t) => { await save("token", t); setToken(t); }} mios={Object.keys(mios).length} onSubirMios={subirMios}
         onRestaurar={() => guardarOcultos([])} />
     );
@@ -288,18 +310,20 @@ export default function App() {
           if (anterior || r.nombre in todo) await cascada(next, new Map([[anterior ?? r.nombre, { name: r.nombre, row: comoAlimento(r) }]]));
           else await guardarRecetas(next);
           setReceta(undefined);
+          avisar("Receta guardada");
         }}
-        onDelete={() => {
+        onDelete={async () => {
           const next = { ...recetas };
           delete next[receta!];
-          return guardarRecetas(next);
+          await guardarRecetas(next);
+          avisar("Receta borrada");
         }} />
     );
   }
 
   return (
     <>
-      <div key={tab} className="entrar" style={{ minHeight: "100vh" }}
+      <div key={`${tab}-${refresco}`} className="entrar" style={{ minHeight: "100vh" }}
         onTouchStart={(e) => {
           const t = e.target as HTMLElement;
           toque.current = t.closest(".sheet, .scrim, .chips, input, select, textarea") ? null : { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -308,23 +332,27 @@ export default function App() {
       {tab === "hoy" && (
         <Hoy dia={dia} log={log} dias={dias} meta={meta}
           onAdd={(m) => { setMeal(m); irA("alimentos"); }}
-          onRemove={(id) => guardarLog(log.filter((e) => e.id !== id))} />
+          onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }} />
       )}
       {tab === "alimentos" && (
         <Alimentos foods={foods} mios={mios} recetas={new Set(Object.keys(recetas))} meal={meal} setMeal={setMeal} consumidas={sumar(log).kcal} meta={meta.kcal_objetivo}
-          onAdd={(e) => guardarLog([...log, e])}
+          onAdd={async (e) => { await guardarLog([...log, e]); avisar(`Agregado a ${MEALS.find((m) => m.id === e.meal)!.label}`); }}
           onGuardar={guardarAlimento} onBorrar={borrarAlimento} onEditarReceta={setReceta} onCompartir={(n) => compartirPaquete([n]).catch(() => {})} />
       )}
       {tab === "recetas" && <Recetas recetas={recetas} onEditar={setReceta} />}
       {tab === "menu" && (
         <Menu dia={dia} menu={menu} meta={meta} foods={todo} onNuevoAlimento={(n, r) => guardarAlimento(n, r, null)}
-          onSet={(d, m, it) => {
-            const delDia = { ...menu[d] };
-            if (it) delDia[m] = it;
-            else delete delDia[m];
+          onAgregar={async (d, m, it) => {
+            await guardarMenu({ ...menu, [d]: { ...menu[d], [m]: [...(menu[d]?.[m] ?? []), it] } });
+            avisar("Agregado al menú");
+          }}
+          onQuitar={async (d, m, i) => {
+            const delDia = { ...menu[d], [m]: (menu[d]?.[m] ?? []).filter((_, j) => j !== i) };
+            if (!delDia[m]!.length) delete delDia[m];
             const next = { ...menu, [d]: delDia };
             if (!Object.keys(delDia).length) delete next[d];
-            guardarMenu(next);
+            await guardarMenu(next);
+            avisar("Quitado del menú");
           }}
           onDuplicar={async (lunes) => {
             const destino = [0, 1, 2, 3, 4, 5, 6].map((i) => sumarDias(lunes, i + 7));
@@ -336,24 +364,23 @@ export default function App() {
               else delete next[d];
             });
             await guardarMenu(next);
+            avisar("Semana duplicada");
             return true;
           }}
           onAplicar={async (d) => {
             if (log.length && !confirm("Hoy ya tienes comidas registradas. ¿Agregar el menú además?")) return;
-            const nuevas = MEALS.flatMap((m) => {
-              const it = menu[d]?.[m.id];
-              return it ? [{ ...it, id: uid(), meal: m.id }] : [];
-            });
+            const nuevas = MEALS.flatMap((m) => (menu[d]?.[m.id] ?? []).map((it) => ({ ...it, id: uid(), meal: m.id })));
             await guardarLog([...log, ...nuevas]);
             irA("hoy");
+            avisar("Menú agregado a hoy");
           }} />
       )}
-      {tab === "objetivos" && <Objetivos perfil={perfil} onObjetivo={(o) => guardarPerfil({ ...perfil, objetivo: o })} onEditar={() => setEditando(true)} onSimular={() => setSimulando(true)} onConfig={() => setConfig(true)} />}
+      {tab === "objetivos" && <Objetivos perfil={perfil} onObjetivo={(o) => guardarPerfil({ ...perfil, objetivo: o })} onEditar={() => setEditando(true)} onSimular={() => setSimulando(true)} onConfig={() => setConfig(true)} hayNueva={!!apkNuevo(upd, __VERSION__)} />}
       </div>
 
       <nav className="tabs" aria-label="Navegación principal">
         {TABS.map(([id, label, icon]) => (
-          <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => irA(id)}>{icon}{label}</button>
+          <button key={id} aria-current={tab === id ? "page" : undefined} onClick={() => (tab === id ? refrescar() : irA(id))}>{icon}{label}</button>
         ))}
       </nav>
     </>

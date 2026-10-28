@@ -6,5 +6,6 @@ import "@fontsource/geist-sans/600.css";
 import "@fontsource/geist-sans/700.css";
 import "./styles.css";
 import App from "./App.tsx";
+import { Toast } from "./ui.tsx";
 
-createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);
+createRoot(document.getElementById("root")!).render(<StrictMode><App /><Toast /></StrictMode>);

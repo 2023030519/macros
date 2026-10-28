@@ -2,11 +2,10 @@ import { useState } from "react";
 import { MEALS, type FoodRow, type MealId } from "../data/foods.ts";
 import type { plan } from "../lib/calc.ts";
 import { lunes, sumarDias } from "../lib/dias.ts";
+import type { MenuSemanal } from "../lib/menu.ts";
 import { sumar, type Item } from "../lib/receta.ts";
-import { cap, fmt } from "../ui.tsx";
+import { Close, Plus, cap, fmt } from "../ui.tsx";
 import Elegir from "./Elegir.tsx";
-
-export type MenuSemanal = Record<string, Partial<Record<MealId, Item>>>;
 
 const svg = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 const fecha = (dia: string) => {
@@ -15,15 +14,15 @@ const fecha = (dia: string) => {
 };
 const corta = (dia: string) => fecha(dia).toLocaleDateString("es-MX", { day: "numeric", month: "short" }).replace(".", "");
 
-export default function Menu({ dia, menu, meta, foods, onSet, onDuplicar, onAplicar, onNuevoAlimento }: {
+export default function Menu({ dia, menu, meta, foods, onAgregar, onQuitar, onDuplicar, onAplicar, onNuevoAlimento }: {
   dia: string; menu: MenuSemanal; meta: ReturnType<typeof plan>; foods: Record<string, FoodRow>;
-  onSet: (d: string, m: MealId, it: Item | null) => void; onDuplicar: (lunes: string) => Promise<boolean>; onAplicar: (d: string) => void; onNuevoAlimento: (n: string, r: FoodRow) => Promise<void>;
+  onAgregar: (d: string, m: MealId, it: Item) => void; onQuitar: (d: string, m: MealId, i: number) => void; onDuplicar: (lunes: string) => Promise<boolean>; onAplicar: (d: string) => void; onNuevoAlimento: (n: string, r: FoodRow) => Promise<void>;
 }) {
   const [semana, setSemana] = useState(lunes(dia));
   const [sel, setSel] = useState(dia);
-  const [cambiando, setCambiando] = useState<MealId | null>(null);
+  const [agregando, setAgregando] = useState<MealId | null>(null);
   const dias = [0, 1, 2, 3, 4, 5, 6].map((i) => sumarDias(semana, i));
-  const delDia = (d: string) => Object.values(menu[d] ?? {}) as Item[];
+  const delDia = (d: string) => Object.values(menu[d] ?? {}).flat() as Item[];
   const t = sumar(delDia(sel));
   const libres = meta.kcal_objetivo - t.kcal;
 
@@ -76,17 +75,23 @@ export default function Menu({ dia, menu, meta, foods, onSet, onDuplicar, onApli
 
       <div className="list">
         {MEALS.map((m) => {
-          const it = menu[sel]?.[m.id];
+          const its = menu[sel]?.[m.id] ?? [];
           return (
-            <div key={m.id} className="row" style={{ padding: "10px 10px 10px 16px" }}>
-              <div className="grow" style={{ gap: 2 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }} className="muted">{m.label}</span>
-                <span className={`name ellipsis ${it ? "" : "muted"}`} style={it ? undefined : { fontWeight: 500 }}>{it ? cap(it.name) : "Sin planear"}</span>
+            <div key={m.id} className="meal">
+              <div className="row" style={{ padding: "10px 10px 10px 16px", borderBottom: 0 }}>
+                <div className="grow" style={{ gap: 2 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }} className="muted">{m.label}</span>
+                  {!its.length && <span className="name muted" style={{ fontWeight: 500 }}>Sin planear</span>}
+                </div>
+                {its.length > 0 && <span style={{ fontSize: 14, fontWeight: 600 }}>{fmt(sumar(its).kcal)} kcal</span>}
+                <button className={`icon-btn ${its.length ? "" : "solid"}`} aria-label={`Agregar a ${m.label}`} onClick={() => setAgregando(m.id)}><Plus /></button>
               </div>
-              {it && <span style={{ fontSize: 14, fontWeight: 600 }}>{fmt(it.kcal)}</span>}
-              <button className="icon-btn" aria-label={`Cambiar ${m.label}`} onClick={() => setCambiando(m.id)}>
-                {it ? <svg {...svg}><path d="M7 7h12l-3-3M17 17H5l3 3" /></svg> : <svg {...svg}><path d="M12 5v14M5 12h14" /></svg>}
-              </button>
+              {its.map((it, i) => (
+                <div key={i} className="row" style={{ padding: "0 10px 8px 16px", borderBottom: 0 }}>
+                  <div className="grow"><span className="name ellipsis">{cap(it.name)}</span><span className="sub">{fmt(it.grams)} g · {fmt(it.kcal)} kcal</span></div>
+                  <button className="icon-btn" aria-label={`Quitar ${it.name} de ${m.label}`} onClick={() => onQuitar(sel, m.id, i)}><Close /></button>
+                </div>
+              ))}
             </div>
           );
         })}
@@ -97,10 +102,9 @@ export default function Menu({ dia, menu, meta, foods, onSet, onDuplicar, onApli
         <button className="primary" style={{ height: 50, fontSize: 14 }} disabled={!delDia(sel).length} onClick={() => onAplicar(sel)}>Aplicar a Hoy</button>
       </div>
 
-      {cambiando && (
-        <Elegir title={MEALS.find((x) => x.id === cambiando)!.label} boton="Poner en el menú" foods={foods} onNuevo={onNuevoAlimento} onClose={() => setCambiando(null)}
-          onPick={(it) => { onSet(sel, cambiando, it); setCambiando(null); }}
-          extra={menu[sel]?.[cambiando] && <button className="secondary" onClick={() => { onSet(sel, cambiando, null); setCambiando(null); }}>Quitar del menú</button>} />
+      {agregando && (
+        <Elegir title={`Agregar a ${MEALS.find((x) => x.id === agregando)!.label}`} boton="Agregar al menú" foods={foods} onNuevo={onNuevoAlimento} onClose={() => setAgregando(null)}
+          onPick={(it) => { onAgregar(sel, agregando, it); setAgregando(null); }} />
       )}
     </main>
   );

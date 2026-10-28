@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export const fmt = (n: number) => Math.round(n).toLocaleString("es-MX");
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -22,7 +22,16 @@ export function Macros({ p, c, g }: { p: number; c: number; g: number }) {
   );
 }
 
+// Hay modales encima de modales (Elegir → Registrar), así que se cuentan para soltar el scroll al cerrar el último.
+let abiertos = 0;
+
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    if (abiertos++ === 0) document.body.style.overflow = "hidden";
+    return () => {
+      if (--abiertos === 0) document.body.style.overflow = "";
+    };
+  }, []);
   return (
     <>
       <div className="scrim" aria-hidden="true" onClick={onClose} />
@@ -42,4 +51,22 @@ export function Seg<T extends string>({ label, value, options, onChange }: { lab
       ))}
     </div>
   );
+}
+
+// Confirmaciones cortas ("Borrado", "Agregado a Cena"…) desde cualquier pantalla.
+export const avisar = (msg: string) => { window.dispatchEvent(new CustomEvent("aviso", { detail: msg })); };
+
+export function Toast() {
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    let t: number;
+    const f = (e: Event) => {
+      setMsg((e as CustomEvent<string>).detail);
+      clearTimeout(t);
+      t = window.setTimeout(() => setMsg(""), 2200);
+    };
+    window.addEventListener("aviso", f);
+    return () => { window.removeEventListener("aviso", f); clearTimeout(t); };
+  }, []);
+  return <div className="toast" role="status" aria-live="polite">{msg && <span key={msg + Date.now()}>{msg}</span>}</div>;
 }

@@ -2,6 +2,14 @@
 
 Cada versión necesita su sección aquí: es lo que se ve en Configuración → Actualizaciones.
 
+## 0.5.0
+- Con un menú o ventana abierta, el fondo ya no se desplaza.
+- Menú semanal: cada tiempo de comida puede llevar varios alimentos y recetas.
+- Avisos de confirmación al agregar, editar, borrar, importar…
+- Toca la pestaña en la que ya estás para recargarla.
+- Actualizaciones es ahora su propia pantalla (Configuración → Actualizaciones), con un punto en el engrane cuando hay versión nueva.
+- Las notas de cada versión vienen cerradas; tócalas para abrirlas.
+
 ## 0.4.0
 - Base compartida: al editar, crear o borrar un alimento con tu token puesto, el cambio queda para todos los que tienen la app y vuelve aunque la reinstales.
 - Configuración → Base compartida: guarda tu token y sube los alimentos que solo tienes en este cel.

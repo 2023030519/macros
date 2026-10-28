@@ -12,8 +12,8 @@ const ACTIVIDADES: [Actividad, string, string][] = [
 const OBJETIVOS: [Objetivo, string][] = [["perder_grasa", "Perder grasa"], ["mantenimiento", "Mantener"], ["ganar_musculo", "Ganar músculo"]];
 const ajusteTxt = (o: Objetivo) => (AJUSTE_KCAL[o] > 0 ? `superávit +${AJUSTE_KCAL[o]}` : AJUSTE_KCAL[o] < 0 ? `déficit −${-AJUSTE_KCAL[o]}` : "sin ajuste");
 
-export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onConfig }: {
-  perfil: Perfil; onObjetivo: (o: Objetivo) => void; onEditar: () => void; onSimular: () => void; onConfig: () => void;
+export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onConfig, hayNueva }: {
+  perfil: Perfil; onObjetivo: (o: Objetivo) => void; onEditar: () => void; onSimular: () => void; onConfig: () => void; hayNueva: boolean;
 }) {
   const r = plan(perfil);
   const act = ACTIVIDADES.find((a) => a[0] === perfil.actividad)!;
@@ -26,7 +26,8 @@ export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onC
         </div>
         <div style={{ flexDirection: "row", gap: 6 }}>
           <button className="pill" onClick={onEditar}>Editar datos</button>
-          <button className="icon-btn" style={{ background: "var(--surface)", width: 36, height: 36, borderRadius: 999 }} aria-label="Configuración" onClick={onConfig}>
+          <button className="icon-btn" style={{ background: "var(--surface)", width: 36, height: 36, borderRadius: 999, position: "relative" }} aria-label={hayNueva ? "Configuración, hay una actualización" : "Configuración"} onClick={onConfig} >
+            {hayNueva && <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, borderRadius: 99, background: "var(--accent)", border: "2px solid var(--bg)" }} />}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
           </button>
         </div>
