@@ -16,7 +16,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: ¿Versión nueva?
         id: v
@@ -26,13 +26,13 @@ jobs:
           if gh release view "v$v" >/dev/null 2>&1; then echo "nueva=no" >> "$GITHUB_OUTPUT"; else echo "nueva=si" >> "$GITHUB_OUTPUT"; fi
 
       - if: steps.v.outputs.nueva == 'si'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
 
       - if: steps.v.outputs.nueva == 'si'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -49,12 +49,21 @@ jobs:
         name: Llave de firma
         run: |
           if [ -z "$DEBUG_KEYSTORE" ]; then echo "::error::Falta el secreto DEBUG_KEYSTORE (ver CLAUDE.md)"; exit 1; fi
-          mkdir -p ~/.android && echo "$DEBUG_KEYSTORE" | base64 -d > ~/.android/debug.keystore
+          echo "$DEBUG_KEYSTORE" | base64 -d > "$RUNNER_TEMP/macros.keystore"
+          echo "MACROS_KEYSTORE=$RUNNER_TEMP/macros.keystore" >> "$GITHUB_ENV"
         env:
           DEBUG_KEYSTORE: ${{ secrets.DEBUG_KEYSTORE }}
 
       - if: steps.v.outputs.nueva == 'si'
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+
+      # Huella de la llave del APK instalado en el cel; si no coincide, no se publica.
+      - if: steps.v.outputs.nueva == 'si'
+        name: Revisar firma
+        run: |
+          firma=$("$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | grep -m1 'SHA-256' | awk '{print $NF}')
+          echo "firma: $firma"
+          [ "$firma" = "db9be13279ba9716551518421a9e95dd0f0da1585b2a2ecd7125be49bfc5aad0" ] || { echo "::error::El APK no está firmado con la llave del cel"; exit 1; }
 
       - if: steps.v.outputs.nueva == 'si'
         run: |

@@ -20,6 +20,19 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // En GitHub Actions la llave llega por MACROS_KEYSTORE; en la PC se usa la de depuración de siempre.
+    // Tiene que ser la misma: con otra, Android no deja actualizar la app instalada.
+    signingConfigs {
+        debug {
+            def ks = System.getenv("MACROS_KEYSTORE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
