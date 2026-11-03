@@ -2,6 +2,17 @@
 
 Cada versión necesita su sección aquí: es lo que se ve en Configuración → Actualizaciones.
 
+## 0.6.0
+- Diseño nuevo: más limpio, con ícono y pantalla de inicio con el logo.
+- Más movimiento: las hojas suben y bajan, los segmentos se deslizan, las barras y el anillo se llenan, lo que agregas o quitas entra y sale con animación.
+- Configuración en secciones que se abren y cierran, con 8 colores, tamaño de texto y densidad.
+- Hoy: elige qué tarjetas ver y en qué orden, o mantén presionada una tarjeta y arrástrala.
+- Tiempos de comida: oculta los que no haces (por ejemplo, el desayuno si ayunas), agrega más, ordénalos y renómbralos.
+- Fibra: nuevo campo al crear o editar un alimento; se ve al agregar y en el total de Hoy.
+- Los botones de gramos (100 g, porción) ahora suman a la cantidad.
+- Las listas para elegir (comida, actividad) y las preguntas antes de borrar o reemplazar se ven como el resto de la app.
+- El gesto o botón atrás del cel cierra Configuración, las ventanas y las hojas en vez de salir de la app.
+
 ## 0.5.0
 - Con un menú o ventana abierta, el fondo ya no se desplaza.
 - Menú semanal: cada tiempo de comida puede llevar varios alimentos y recetas.
