@@ -1,7 +1,18 @@
-import { apkNuevo, esMasNueva, type EstadoUpd } from "../lib/version.ts";
+import { useRef } from "react";
+import { AVISO_DEV, TOQUES_DEV, apkNuevo, contarToque, esMasNueva, type EstadoUpd } from "../lib/version.ts";
+import { avisar } from "../ui.tsx";
 
-export default function Actualizaciones({ upd, onBuscar, onCerrar }: { upd: EstadoUpd; onBuscar: () => void; onCerrar: () => void }) {
+export default function Actualizaciones({ upd, onBuscar, onCerrar, dev, onDev }: { upd: EstadoUpd; onBuscar: () => void; onCerrar: () => void; dev: boolean; onDev: () => void }) {
   const nueva = apkNuevo(upd, __VERSION__);
+  const toques = useRef({ n: 0, t: 0 });
+  function tocar() {
+    if (dev) return avisar("Ya eres dev");
+    const ahora = Date.now();
+    const n = contarToque(toques.current.n, toques.current.t, ahora);
+    toques.current = { n, t: ahora };
+    if (n === AVISO_DEV) avisar("Ya casi eres dev");
+    if (n === TOQUES_DEV) { onDev(); avisar("Modo dev activado"); }
+  }
   return (
     <main className="screen" style={{ paddingBottom: 40, gap: 18 }}>
       <header className="head" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
@@ -12,7 +23,7 @@ export default function Actualizaciones({ upd, onBuscar, onCerrar }: { upd: Esta
       <div className="list">
         <div className="row">
           <div className="grow">
-            <span className="name">MacrOS {__VERSION__}</span>
+            <button type="button" className="name" style={{ background: "none", border: 0, padding: 0, textAlign: "left", alignSelf: "flex-start" }} onClick={tocar}>MacrOS {__VERSION__}</button>
             <span className="sub" role="status">
               {upd.t === "buscando" ? "Buscando…" : upd.t === "error" ? upd.msg : nueva ? `Hay una versión nueva: ${nueva.version}` : "Tienes la última versión."}
             </span>

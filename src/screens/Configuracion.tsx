@@ -36,9 +36,9 @@ function Seccion({ titulo, resumen, abierta, children }: { titulo: string; resum
   );
 }
 
-export default function Configuracion({ tema, onTema, color, onColor, texto, onTexto, densidad, onDensidad, hoy, onHoy, comidas, onComidas, ocultos, onRestaurar, onExportar, onImportar, token, onToken, mios, onSubirMios, upd, onActualizaciones, onCerrar }: {
+export default function Configuracion({ tema, onTema, color, onColor, texto, onTexto, densidad, onDensidad, hoy, onHoy, comidas, onComidas, dev, onSalirDev, ocultos, onRestaurar, onExportar, onImportar, token, onToken, mios, onSubirMios, upd, onActualizaciones, onCerrar }: {
   tema: Tema; onTema: (t: Tema) => void; color: Color; onColor: (c: Color) => void;
-  texto: Texto; onTexto: (t: Texto) => void; densidad: Densidad; onDensidad: (d: Densidad) => void; hoy: PrefHoy; onHoy: (h: PrefHoy) => void; comidas: PrefComidas; onComidas: (c: PrefComidas) => void;
+  texto: Texto; onTexto: (t: Texto) => void; densidad: Densidad; onDensidad: (d: Densidad) => void; hoy: PrefHoy; onHoy: (h: PrefHoy) => void; comidas: PrefComidas; onComidas: (c: PrefComidas) => void; dev: boolean; onSalirDev: () => void;
   ocultos: number; onRestaurar: () => void;
   onExportar: () => Promise<void>; onImportar: (texto: string) => Promise<string | null>;
   token: string; onToken: (t: string) => Promise<void>; mios: number; onSubirMios: () => Promise<string>;
@@ -151,7 +151,7 @@ export default function Configuracion({ tema, onTema, color, onColor, texto, onT
         {aviso && <span className="sub" role="status">{aviso}</span>}
       </Seccion>
 
-      <Seccion titulo="Base compartida" resumen={token ? "Eres editor" : "Solo si vas a editar la base"}>
+      {dev && <Seccion titulo="Base compartida" resumen={token ? "Modo dev · eres editor" : "Modo dev"}>
         <span className="sub">
           {token
             ? "Eres editor: lo que crees, edites o borres en Alimentos se guarda para todos los que tienen la app, y vuelve aunque la reinstales."
@@ -180,7 +180,8 @@ export default function Configuracion({ tema, onTema, color, onColor, texto, onT
           </form>
         )}
         {avisoBase && <span className="sub" role="status">{avisoBase}</span>}
-      </Seccion>
+        <button className="pill" style={{ alignSelf: "flex-start" }} onClick={onSalirDev}>Salir del modo dev</button>
+      </Seccion>}
 
       <div className="list">
         <button className="row" onClick={onActualizaciones}>

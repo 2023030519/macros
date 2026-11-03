@@ -26,3 +26,8 @@ export function apkNuevo(e: EstadoUpd, actual: string) {
   const r = e.t === "listo" ? e.releases[0] : undefined;
   return r && esMasNueva(r.tag_name, actual) ? { version: r.tag_name, url: r.assets.find((a) => a.name.endsWith(".apk"))?.browser_download_url } : null;
 }
+
+// Modo dev, como en Android: tocar la versión 15 veces seguidas (sin pausas de más de 1 s); a las 10 se avisa.
+export const TOQUES_DEV = 15;
+export const AVISO_DEV = 10;
+export const contarToque = (n: number, ultimo: number, ahora: number) => (ahora - ultimo <= 1000 ? n + 1 : 1);

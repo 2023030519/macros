@@ -46,6 +46,8 @@ export default function App() {
   const [simulando, setSimulando] = useState(false);
   const [config, setConfig] = useState(false);
   const [verUpd, setVerUpd] = useState(false);
+  // modo dev (tocar la versión en Actualizaciones): muestra Base compartida en Configuración
+  const [dev, setDev] = useState(false);
   useAtras(editando, () => setEditando(false));
   useAtras(simulando, () => setSimulando(false));
   useAtras(config, () => setConfig(false));
@@ -78,13 +80,13 @@ export default function App() {
 
   async function cargar() {
     const d = hoy();
-    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph, cm] = await Promise.all([
+    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph, cm, dv] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
       load<Record<string, Record<string, Item>>>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
       load<Color>("color", "neutro"), load<Base>("base", VACIA), load<string>("token", ""),
-      load<Texto>("texto", "normal"), load<Densidad>("densidad", "comoda"), load<PrefHoy | null>("hoy", null), load<PrefComidas | null>("comidas", null),
+      load<Texto>("texto", "normal"), load<Densidad>("densidad", "comoda"), load<PrefHoy | null>("hoy", null), load<PrefComidas | null>("comidas", null), load<boolean>("dev", false),
     ]);
-    setTexto(tx); setDensidad(dn); setPrefHoy(normalizarHoy(ph)); setComidas(normalizarComidas(cm));
+    setTexto(tx); setDensidad(dn); setPrefHoy(normalizarHoy(ph)); setComidas(normalizarComidas(cm)); setDev(dv);
     setBase(b); setToken(tk);
     setPerfil(p); setMios(m); setRecetas(r); setMenu(normalizarMenu(mn)); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
     diaRef.current = d;
@@ -301,7 +303,7 @@ export default function App() {
   if (!ready) return null;
   if (!perfil || editando) return <TusDatos perfil={perfil} onSave={guardarPerfil} onCancel={perfil ? () => setEditando(false) : undefined} />;
   if (simulando) return <TusDatos perfil={perfil} simular onCancel={() => setSimulando(false)} />;
-  if (verUpd) return <Actualizaciones upd={upd} onCerrar={() => setVerUpd(false)} onBuscar={() => { setUpd({ t: "buscando" }); buscarReleases().then(setUpd); }} />;
+  if (verUpd) return <Actualizaciones upd={upd} dev={dev} onDev={() => { save("dev", true); setDev(true); }} onCerrar={() => setVerUpd(false)} onBuscar={() => { setUpd({ t: "buscando" }); buscarReleases().then(setUpd); }} />;
   if (config) {
     return (
       <Configuracion upd={upd} onActualizaciones={() => setVerUpd(true)} tema={tema} color={color} ocultos={ocultos.length} onCerrar={() => setConfig(false)}
@@ -310,6 +312,7 @@ export default function App() {
         texto={texto} onTexto={async (t) => { await save("texto", t); setTexto(t); }}
         densidad={densidad} onDensidad={async (d) => { await save("densidad", d); setDensidad(d); }}
         hoy={prefHoy} onHoy={async (h) => { await save("hoy", h); setPrefHoy(h); }}
+        dev={dev} onSalirDev={() => { save("dev", false); setDev(false); }}
         comidas={comidas} onComidas={async (c) => { await save("comidas", c); setComidas(c); }}
         onExportar={() => compartirPaquete(null)} onImportar={async (t) => { const r = await importar(t); if (r) avisar("Importado"); return r; }}
         token={token} onToken={async (t) => { await save("token", t); setToken(t); }} mios={Object.keys(mios).length} onSubirMios={subirMios}
