@@ -18,7 +18,7 @@ import Configuracion, { type Color, type Densidad, type Tema, type Texto } from 
 import { HOY_DEFAULT, normalizarHoy, type PrefHoy } from "./lib/hoy.ts";
 import Objetivos, { TusDatos } from "./screens/Objetivos.tsx";
 import Recetas, { EditarReceta } from "./screens/Recetas.tsx";
-import { avisar, uid } from "./ui.tsx";
+import { avisar, preguntar, uid } from "./ui.tsx";
 
 type Tab = "hoy" | "alimentos" | "recetas" | "menu" | "objetivos";
 const ico = { fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
@@ -136,7 +136,7 @@ export default function App() {
     const na = Object.keys(p.alimentos).length;
     const nr = Object.keys(p.recetas).length;
     const repetidos = [...Object.keys(p.alimentos), ...Object.keys(p.recetas)].filter((n) => n in mios || n in recetas).length;
-    if (!confirm(`Importar ${na} alimentos y ${nr} recetas?${repetidos ? ` ${repetidos} ya existen y se reemplazan.` : ""}`)) return null;
+    if (!(await preguntar({ titulo: `¿Importar ${na} alimentos y ${nr} recetas?`, texto: repetidos ? `${repetidos} ya existen y se reemplazan.` : undefined, si: "Importar" }))) return null;
     const m = { ...mios, ...p.alimentos };
     await save("mios", m);
     setMios(m);
@@ -196,7 +196,7 @@ export default function App() {
       const msg = row ? (anterior && anterior !== n ? `Renombrar ${anterior} → ${n}` : `Guardar ${n}`) : `Borrar ${n}`;
       await guardarBase(await subir(token, (b) => editarBase(b, n, row, anterior), `${msg} (desde la app)`));
     } catch (e) {
-      alert(`No se pudo guardar en la base compartida: ${(e as Error).message} Se guardó solo en este cel.`);
+      void preguntar({ titulo: "No se pudo guardar en la base compartida", texto: `${(e as Error).message} Se guardó solo en este cel.`, si: "Entendido", no: false });
       return false;
     }
     // tu copia local ya no hace falta y taparía la de la base
@@ -367,7 +367,7 @@ export default function App() {
           }}
           onDuplicar={async (lunes) => {
             const destino = [0, 1, 2, 3, 4, 5, 6].map((i) => sumarDias(lunes, i + 7));
-            if (destino.some((d) => menu[d]) && !confirm("La semana siguiente ya tiene menú. ¿Reemplazarlo?")) return false;
+            if (destino.some((d) => menu[d]) && !(await preguntar({ titulo: "La semana siguiente ya tiene menú", texto: "Se reemplaza con el de esta semana.", si: "Reemplazar", peligro: true }))) return false;
             const next = { ...menu };
             destino.forEach((d, i) => {
               const origen = menu[sumarDias(lunes, i)];
@@ -379,7 +379,7 @@ export default function App() {
             return true;
           }}
           onAplicar={async (d) => {
-            if (log.length && !confirm("Hoy ya tienes comidas registradas. ¿Agregar el menú además?")) return;
+            if (log.length && !(await preguntar({ titulo: "Hoy ya tienes comidas registradas", texto: "El menú se agrega a lo que ya registraste.", si: "Agregar el menú" }))) return;
             const nuevas = MEALS.flatMap((m) => (menu[d]?.[m.id] ?? []).map((it) => ({ ...it, id: uid(), meal: m.id })));
             await guardarLog([...log, ...nuevas]);
             irA("hoy");

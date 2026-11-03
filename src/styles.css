@@ -107,6 +107,7 @@ h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
 .icon-btn.solid { background: var(--accent); color: var(--on-accent); }
 .icon-btn.soft { background: var(--surface2); }
 .primary { height: 56px; border-radius: var(--r-lg); border: 0; background: var(--accent); color: var(--on-accent); font-size: 16px; font-weight: 600; }
+.primary.peligro { background: var(--warn); color: var(--inv); }
 .secondary { height: 56px; border-radius: var(--r-lg); border: 1px solid var(--line); background: transparent; font-size: 16px; font-weight: 600; }
 button:disabled { opacity: 0.4; cursor: default; }
 
@@ -129,8 +130,8 @@ button.row, .press { transition: background-color var(--d-press) var(--ease); }
 .box:focus-within { border: 2px solid var(--text); padding: 0 11px; }
 .box input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font-size: 18px; font-weight: 700; }
 .box.opc { width: 100%; gap: 8px; text-align: left; font-size: 15px; font-weight: 600; }
-.box.buscar { height: 52px; padding: 0 16px; gap: 12px; color: var(--muted); }
-.box.buscar:focus-within { padding: 0 15px; }
+.box.buscar { height: 56px; padding: 0 20px; gap: 14px; color: var(--muted); }
+.box.buscar:focus-within { padding: 0 19px; }
 .box .unit { font-size: 13px; color: var(--muted); font-weight: 500; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -168,8 +169,9 @@ button.row, .press { transition: background-color var(--d-press) var(--ease); }
 .fold { overflow: clip; }
 .fold > summary { list-style: none; cursor: pointer; }
 .fold > summary::-webkit-details-marker { display: none; }
-.fold::details-content { height: 0; overflow: clip; opacity: 0; transition: height var(--d-ui) var(--ease), opacity var(--d-ui) var(--ease), content-visibility var(--d-ui) allow-discrete; }
-.fold[open]::details-content { height: auto; opacity: 1; }
+/* Sin fundido: el contenido sigue visible y el alto lo recorta, así abre y cierra todo junto. */
+.fold::details-content { height: 0; overflow: clip; transition: height var(--d-ui) var(--ease), content-visibility var(--d-ui) allow-discrete; }
+.fold[open]::details-content { height: auto; }
 .chev { display: flex; color: var(--muted); transition: transform var(--d-ui) var(--ease); }
 .fold[open] > summary .chev { transform: rotate(180deg); }
 

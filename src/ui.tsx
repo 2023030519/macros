@@ -125,6 +125,36 @@ export function Seg<T extends string>({ label, value, options, onChange }: { lab
   );
 }
 
+// Preguntas antes de una acción (reemplazan confirm/alert nativos): await preguntar({...}) da true si acepta.
+type Pregunta = { titulo: string; texto?: string; si: string; peligro?: boolean; no?: string | false };
+type Pendiente = Pregunta & { resolve: (ok: boolean) => void };
+export const preguntar = (p: Pregunta) =>
+  new Promise<boolean>((resolve) => { window.dispatchEvent(new CustomEvent<Pendiente>("pregunta", { detail: { ...p, resolve } })); });
+
+export function Preguntas() {
+  const [p, setP] = useState<Pendiente | null>(null);
+  useEffect(() => {
+    // si llega otra con una abierta, la anterior cuenta como cancelada
+    const f = (e: Event) => setP((prev) => { prev?.resolve(false); return (e as CustomEvent<Pendiente>).detail; });
+    window.addEventListener("pregunta", f);
+    return () => window.removeEventListener("pregunta", f);
+  }, []);
+  if (!p) return null;
+  const fin = (ok: boolean) => { p.resolve(ok); setP(null); };
+  return (
+    <Sheet title={p.titulo} onClose={() => fin(false)}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--s2)" }}>
+        <h2>{p.titulo}</h2>
+        {p.texto && <p className="muted" style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>{p.texto}</p>}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--s2)", paddingTop: "var(--s2)" }}>
+        <button className={`primary${p.peligro ? " peligro" : ""}`} onClick={() => fin(true)}>{p.si}</button>
+        {p.no !== false && <button className="secondary" onClick={() => fin(false)}>{p.no ?? "Cancelar"}</button>}
+      </div>
+    </Sheet>
+  );
+}
+
 // Confirmaciones cortas ("Borrado", "Agregado a Cena"…) desde cualquier pantalla.
 export const avisar = (msg: string) => { window.dispatchEvent(new CustomEvent("aviso", { detail: msg })); };
 

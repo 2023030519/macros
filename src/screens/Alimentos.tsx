@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { MEALS, PRODUCTOS, RECETAS, type FoodRow, type MealId } from "../data/foods.ts";
 import type { Entrada } from "../lib/store.ts";
-import { Close, Macros, Minus, Opciones, Plus, Search, Sheet, barra, cap, fmt, salir, uid } from "../ui.tsx";
+import { Close, Macros, Minus, Opciones, Plus, Search, Sheet, barra, cap, fmt, preguntar, salir, uid } from "../ui.tsx";
 
 type Fuente = "General" | "Producto" | "Receta" | "Mío";
 type Props = {
@@ -106,11 +106,11 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
             setOpciones(null);
           }}>Editar</button>
           <button className="secondary" onClick={() => { onCompartir(opciones); setOpciones(null); }}>Compartir</button>
-          <button className="secondary" style={{ color: "var(--warn)" }} onClick={() => {
+          <button className="secondary" style={{ color: "var(--warn)" }} onClick={async () => {
             const n = opciones;
             const aviso = n in mios && n in foods ? "Se borra tu versión y vuelve la original de la base."
               : n in mios || recetas.has(n) ? "No se puede deshacer." : "Lo puedes restaurar en Configuración.";
-            if (!confirm(`¿Borrar "${n}"? ${aviso}`)) return;
+            if (!(await preguntar({ titulo: `¿Borrar ${cap(n)}?`, texto: aviso, si: "Borrar", peligro: true }))) return;
             setOpciones(null);
             salir(document.querySelector(`[data-n="${CSS.escape(n)}"]`), () => onBorrar(n));
           }}>Borrar</button>
@@ -191,12 +191,12 @@ export function AlimentoSheet({ inicial, existe, onClose, onSave }: { inicial: I
   const num = (s: string) => (s.trim() === "" ? 0 : Number(s.replace(",", ".")));
   const titulo = inicial.anterior ? "Editar alimento" : "Nuevo alimento";
 
-  function guardar() {
+  async function guardar() {
     const nombre = v.nombre.trim().toLowerCase();
     const [kcal, p, c, g, porcion] = [v.kcal, v.p, v.c, v.g, v.porcion].map(num);
     if (!nombre || !v.kcal.trim()) return setErr("Pon nombre y kcal.");
     if (![kcal, p, c, g, porcion].every((n) => Number.isFinite(n) && n >= 0)) return setErr("Solo números de 0 en adelante.");
-    if (nombre !== inicial.anterior && existe(nombre) && !confirm(`"${nombre}" ya existe. ¿Reemplazarlo con tus valores?`)) return;
+    if (nombre !== inicial.anterior && existe(nombre) && !(await preguntar({ titulo: `${cap(nombre)} ya existe`, texto: "Se reemplaza con tus valores.", si: "Reemplazar", peligro: true }))) return;
     // si no cambió el peso de la porción, conserva su nombre original (pieza, rebanada…)
     const p0 = r0?.[5];
     const porc = !porcion ? null : p0 && p0.gramos === porcion ? p0 : { cantidad: 1, unidad: "porción", gramos: porcion };

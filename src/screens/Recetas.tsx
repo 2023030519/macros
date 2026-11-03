@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FoodRow } from "../data/foods.ts";
 import { CATEGORIAS, sumar, type Receta } from "../lib/receta.ts";
-import { Close, Minus, Plus, Seg, cap, fmt, llave, salir } from "../ui.tsx";
+import { Close, Minus, Plus, Seg, cap, fmt, llave, preguntar, salir } from "../ui.tsx";
 import Elegir from "./Elegir.tsx";
 
 const Libro = () => (
@@ -87,14 +87,14 @@ export function EditarReceta({ receta, foods, existe, onSave, onDelete, onCancel
   const [err, setErr] = useState("");
   const t = sumar(r.ingredientes);
 
-  function guardar() {
+  async function guardar() {
     const nombre = r.nombre.trim().toLowerCase();
     const min = tiempo.trim() ? Number(tiempo) : 0;
     if (!nombre) return setErr("Ponle nombre.");
     if (!r.ingredientes.length) return setErr("Agrega al menos un ingrediente.");
     if (!Number.isFinite(min) || min < 0) return setErr("El tiempo debe ser un número de minutos.");
     // el nombre es la llave: no pisar un alimento u otra receta sin preguntar
-    if (nombre !== receta?.nombre && existe(nombre) && !confirm(`"${nombre}" ya existe. ¿Reemplazarlo?`)) return;
+    if (nombre !== receta?.nombre && existe(nombre) && !(await preguntar({ titulo: `${cap(nombre)} ya existe`, texto: "Se reemplaza con esta receta.", si: "Reemplazar", peligro: true }))) return;
     onSave({ ...r, nombre, tiempo: min }, receta?.nombre ?? null);
   }
 
@@ -159,7 +159,7 @@ export function EditarReceta({ receta, foods, existe, onSave, onDelete, onCancel
       </div>
 
       {err && <p className="error" role="alert">{err}</p>}
-      {receta && <button className="secondary" style={{ color: "var(--warn)" }} onClick={() => confirm(`¿Borrar la receta "${receta.nombre}"?`) && onDelete()}>Borrar receta</button>}
+      {receta && <button className="secondary" style={{ color: "var(--warn)" }} onClick={async () => (await preguntar({ titulo: `¿Borrar ${cap(receta.nombre)}?`, texto: "La receta se borra de este cel. No se puede deshacer.", si: "Borrar", peligro: true })) && onDelete()}>Borrar receta</button>}
 
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "var(--surface)", borderTop: "1px solid var(--line)", padding: "14px 20px calc(18px + env(safe-area-inset-bottom))" }}>
         <div style={{ maxWidth: 440, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
