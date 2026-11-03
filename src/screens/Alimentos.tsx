@@ -128,7 +128,7 @@ function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onCl
   const g = Number(gramos.replace(",", "."));
   const ok = Number.isFinite(g) && g > 0;
   const k = ok ? g / 100 : 0;
-  const e = { kcal: row[0] * k, p: row[1] * k, c: row[2] * k, g: row[3] * k };
+  const e = { kcal: row[0] * k, p: row[1] * k, c: row[2] * k, g: row[3] * k, f: row[4] * k };
   const paso = (d: number) => setGramos(String(Math.max(0, (ok ? g : 0) + d)));
   const atajos: [string, number][] = [["100 g", 100], ...(row[5] ? [[porcionTxt(row), row[5].gramos] as [string, number]] : [])];
 
@@ -167,6 +167,7 @@ function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onCl
         <div className="tile"><b>{fmt(e.c)}</b><span><i className="dot bg-c" />Carb g</span></div>
         <div className="tile"><b>{fmt(e.g)}</b><span><i className="dot bg-g" />Gras g</span></div>
       </div>
+      <div className="kv"><span className="muted">Fibra</span><b>{fmt(e.f)} g</b></div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div className="kv"><span className="muted">Tu día después</span><b>{fmt(consumidas + e.kcal)} / {fmt(meta)} kcal</b></div>
@@ -186,21 +187,21 @@ const num0 = (n?: number) => (n === undefined ? "" : String(+n.toFixed(2)));
 
 export function AlimentoSheet({ inicial, existe, onClose, onSave }: { inicial: Inicial; existe: (n: string) => boolean; onClose: () => void; onSave: (n: string, r: FoodRow) => Promise<void> }) {
   const r0 = inicial.row;
-  const [v, setV] = useState({ nombre: inicial.nombre, kcal: num0(r0?.[0]), p: num0(r0?.[1]), c: num0(r0?.[2]), g: num0(r0?.[3]), porcion: num0(r0?.[5]?.gramos) });
+  const [v, setV] = useState({ nombre: inicial.nombre, kcal: num0(r0?.[0]), p: num0(r0?.[1]), c: num0(r0?.[2]), g: num0(r0?.[3]), f: num0(r0?.[4]), porcion: num0(r0?.[5]?.gramos) });
   const [err, setErr] = useState("");
   const num = (s: string) => (s.trim() === "" ? 0 : Number(s.replace(",", ".")));
   const titulo = inicial.anterior ? "Editar alimento" : "Nuevo alimento";
 
   async function guardar() {
     const nombre = v.nombre.trim().toLowerCase();
-    const [kcal, p, c, g, porcion] = [v.kcal, v.p, v.c, v.g, v.porcion].map(num);
+    const [kcal, p, c, g, f, porcion] = [v.kcal, v.p, v.c, v.g, v.f, v.porcion].map(num);
     if (!nombre || !v.kcal.trim()) return setErr("Pon nombre y kcal.");
-    if (![kcal, p, c, g, porcion].every((n) => Number.isFinite(n) && n >= 0)) return setErr("Solo números de 0 en adelante.");
+    if (![kcal, p, c, g, f, porcion].every((n) => Number.isFinite(n) && n >= 0)) return setErr("Solo números de 0 en adelante.");
     if (nombre !== inicial.anterior && existe(nombre) && !(await preguntar({ titulo: `${cap(nombre)} ya existe`, texto: "Se reemplaza con tus valores.", si: "Reemplazar", peligro: true }))) return;
     // si no cambió el peso de la porción, conserva su nombre original (pieza, rebanada…)
     const p0 = r0?.[5];
     const porc = !porcion ? null : p0 && p0.gramos === porcion ? p0 : { cantidad: 1, unidad: "porción", gramos: porcion };
-    onSave(nombre, [kcal, p, c, g, r0?.[4] ?? 0, porc]);
+    onSave(nombre, [kcal, p, c, g, f, porc]);
   }
 
   const campo = (k: keyof typeof v, label: string, unit: string) => (
@@ -221,8 +222,7 @@ export function AlimentoSheet({ inicial, existe, onClose, onSave }: { inicial: I
         <div className="box"><input id="n-nombre" value={v.nombre} onChange={(e) => setV({ ...v, nombre: e.target.value })} style={{ fontSize: 16, fontWeight: 600 }} /></div>
       </div>
       <span className="label">Valores por 100 g</span>
-      <div className="grid2">{campo("kcal", "Calorías", "kcal")}{campo("p", "Proteína", "g")}{campo("c", "Carbohidratos", "g")}{campo("g", "Grasas", "g")}</div>
-      {campo("porcion", "1 porción pesa (opcional)", "g")}
+      <div className="grid2">{campo("kcal", "Calorías", "kcal")}{campo("p", "Proteína", "g")}{campo("c", "Carbohidratos", "g")}{campo("g", "Grasas", "g")}{campo("f", "Fibra", "g")}{campo("porcion", "1 porción pesa", "g")}</div>
       {err && <p className="error" role="alert">{err}</p>}
       <button className="primary" onClick={guardar}>Guardar</button>
     </Sheet>

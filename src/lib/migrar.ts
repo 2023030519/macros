@@ -28,7 +28,7 @@ export function fila(x: unknown): FoodRow | null {
 function item(x: unknown): Item | null {
   const i = x as Item;
   const n = nombre(i?.name);
-  return n && [i.grams, i.kcal, i.p, i.c, i.g].every(num) ? { name: n, grams: i.grams, kcal: i.kcal, p: i.p, c: i.c, g: i.g } : null;
+  return n && [i.grams, i.kcal, i.p, i.c, i.g].every(num) ? { name: n, grams: i.grams, kcal: i.kcal, p: i.p, c: i.c, g: i.g, ...(num(i.f) && { f: i.f }) } : null;
 }
 
 function receta(x: unknown): Receta | null {

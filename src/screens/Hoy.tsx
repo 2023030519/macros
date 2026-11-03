@@ -48,6 +48,8 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
             <div className="kv"><span className="muted">Meta</span><b>{fmt(meta.kcal_objetivo)}</b></div>
             <div className="hr" />
             <div className="kv"><span className="muted">Consumidas</span><b>{fmt(t.kcal)}</b></div>
+            <div className="hr" />
+            <div className="kv"><span className="muted">Fibra</span><b>{fmt(t.f)} g</b></div>
           </div>
         </div>
         <div className="grid3" style={{ gap: 12 }}>
