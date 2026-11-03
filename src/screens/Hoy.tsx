@@ -1,21 +1,106 @@
-import { Fragment, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MEALS, type MealId } from "../data/foods.ts";
 import type { plan } from "../lib/calc.ts";
 import { racha, sumarDias } from "../lib/dias.ts";
 import { sumar } from "../lib/receta.ts";
 import type { Entrada } from "../lib/store.ts";
-import type { PrefHoy, Tarjeta } from "../lib/hoy.ts";
+import { reubicar, type PrefHoy, type Tarjeta } from "../lib/hoy.ts";
 import { Chevron, Close, Flame, Macros, Plus, barra, cap, fmt, salir } from "../ui.tsx";
 
-type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
+type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
 
 const fecha = (dia: string) => {
   const [y, m, d] = dia.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
-export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Props) {
+export default function Hoy({ dia, log, dias, meta, pref, onOrden, onAdd, onRemove }: Props) {
   const [abierto, setAbierto] = useState<MealId | null>(null);
+  // orden recién soltado, mientras se guarda
+  const [local, setLocal] = useState<Tarjeta[] | null>(null);
+  useEffect(() => setLocal(null), [pref.orden]);
+  const orden = local ?? pref.orden;
+  const vis = orden.filter((k) => !pref.ocultas.includes(k));
+  const raiz = useRef<HTMLElement>(null);
+  const actual = useRef({ pref: { ...pref, orden }, onOrden });
+  actual.current = { pref: { ...pref, orden }, onOrden };
+
+  // ya reordenado el DOM, se quitan los desplazamientos del arrastre sin animar (si no, regresarían de lado)
+  useLayoutEffect(() => {
+    raiz.current!.querySelectorAll<HTMLElement>(".tarjeta").forEach((t) => {
+      t.classList.remove("soltando");
+      t.style.transition = "none";
+      t.style.transform = "";
+      void t.offsetHeight;
+      t.style.transition = "";
+    });
+  }, [vis.join()]);
+
+  // Mantener presionada una tarjeta (400 ms) y arrastrarla. Eventos nativos: hay que poder cancelar el scroll.
+  useEffect(() => {
+    const main = raiz.current!;
+    let timer = 0, x0 = 0, y0 = 0, el: HTMLElement | null = null, activo = false, i = 0, ni = 0, gap = 0;
+    let cajas: { el: HTMLElement; top: number; h: number }[] = [];
+    const fin = () => { clearTimeout(timer); el = null; activo = false; };
+    const inicio = (e: TouchEvent) => {
+      const t = (e.target as Element).closest<HTMLElement>(".tarjeta");
+      if (!t || e.touches.length > 1 || main.querySelector(".soltando")) return;
+      el = t; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+      timer = window.setTimeout(() => {
+        cajas = [...main.querySelectorAll<HTMLElement>(".tarjeta")].map((c) => { const r = c.getBoundingClientRect(); return { el: c, top: r.top, h: r.height }; });
+        i = ni = cajas.findIndex((c) => c.el === t);
+        gap = cajas.length > 1 ? cajas[1].top - cajas[0].top - cajas[0].h : 0;
+        activo = true;
+        t.classList.add("arrastrando");
+      }, 400);
+    };
+    const mover = (e: TouchEvent) => {
+      if (!el) return;
+      const y = e.touches[0].clientY;
+      if (!activo) { if (Math.hypot(e.touches[0].clientX - x0, y - y0) > 8) fin(); return; }
+      e.preventDefault();
+      const dy = y - y0, paso = cajas[i].h + gap;
+      el.style.transform = `translateY(${dy}px)`;
+      const centro = cajas[i].top + cajas[i].h / 2 + dy;
+      ni = cajas.filter((c, j) => j !== i && c.top + c.h / 2 < centro).length;
+      cajas.forEach((c, j) => { if (j !== i) c.el.style.transform = i < j && j <= ni ? `translateY(${-paso}px)` : ni <= j && j < i ? `translateY(${paso}px)` : ""; });
+    };
+    const soltar = (e: TouchEvent) => {
+      if (!activo) return fin();
+      e.preventDefault(); // sin clic al soltar
+      e.stopPropagation(); // ni cambio de pestaña por deslizar
+      const t = el!, desde = i, a = ni;
+      let off = 0;
+      for (let j = Math.min(desde, a); j <= Math.max(desde, a); j++) if (j !== desde) off += (a > desde ? 1 : -1) * (cajas[j].h + gap);
+      t.classList.replace("arrastrando", "soltando");
+      t.style.transform = `translateY(${off}px)`;
+      fin();
+      window.setTimeout(() => {
+        if (a === desde) { t.classList.remove("soltando"); t.style.transform = ""; return; }
+        const n = reubicar(actual.current.pref, t.dataset.tarjeta as Tarjeta, a);
+        setLocal(n);
+        actual.current.onOrden(n);
+      }, 200);
+    };
+    const cancelar = () => {
+      if (activo) cajas.forEach((c) => { c.el.style.transform = ""; c.el.classList.remove("arrastrando"); });
+      fin();
+    };
+    const menu = (e: Event) => { if ((e.target as Element).closest(".tarjeta")) e.preventDefault(); };
+    main.addEventListener("touchstart", inicio, { passive: true });
+    main.addEventListener("touchmove", mover, { passive: false });
+    main.addEventListener("touchend", soltar);
+    main.addEventListener("touchcancel", cancelar);
+    main.addEventListener("contextmenu", menu);
+    return () => {
+      clearTimeout(timer);
+      main.removeEventListener("touchstart", inicio);
+      main.removeEventListener("touchmove", mover);
+      main.removeEventListener("touchend", soltar);
+      main.removeEventListener("touchcancel", cancelar);
+      main.removeEventListener("contextmenu", menu);
+    };
+  }, []);
   const t = sumar(log);
   const resto = meta.kcal_objetivo - t.kcal;
   const arco = Math.min(1, t.kcal / meta.kcal_objetivo) * 339.3;
@@ -118,7 +203,7 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
   };
 
   return (
-    <main className="screen">
+    <main ref={raiz} className="screen">
       <header className="head">
         <div>
           <span className="kicker">{cap(fecha(dia).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" }).replace(",", ""))}</span>
@@ -127,7 +212,7 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
         <span className="pill" aria-label={`Racha de ${r} días`}><Flame />{r}</span>
       </header>
 
-      {pref.orden.filter((k) => !pref.ocultas.includes(k)).map((k) => <Fragment key={k}>{bloques[k]}</Fragment>)}
+      {vis.map((k) => <div key={k} className="tarjeta" data-tarjeta={k}>{bloques[k]}</div>)}
     </main>
   );
 }

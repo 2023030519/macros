@@ -130,7 +130,7 @@ button.row, .press { transition: background-color var(--d-press) var(--ease); }
 .box:focus-within { border: 2px solid var(--text); padding: 0 11px; }
 .box input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font-size: 18px; font-weight: 700; }
 .box.opc { width: 100%; gap: 8px; text-align: left; font-size: 15px; font-weight: 600; }
-.box.buscar { height: 56px; padding: 0 20px; gap: 14px; color: var(--muted); }
+.box.buscar { height: 64px; padding: 0 20px; gap: 14px; color: var(--muted); }
 .box.buscar:focus-within { padding: 0 19px; }
 .box .unit { font-size: 13px; color: var(--muted); font-weight: 500; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -210,3 +210,7 @@ button.row { width: 100%; min-height: 52px; background: none; border: 0; border-
 /* Una cifra que cambia (objetivo, calorías restantes) entra de abajo; no cuenta. */
 @keyframes cambio { from { opacity: 0; transform: translateY(6px); } }
 .cambia { display: inline-block; animation: cambio var(--d-ui) var(--ease); }
+/* Hoy: mantener presionada una tarjeta la levanta; las demás se apartan mientras se arrastra (Hoy.tsx). */
+.tarjeta { display: flex; flex-direction: column; gap: var(--s4); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform var(--d-ui) var(--ease); }
+.tarjeta.arrastrando { position: relative; z-index: 2; scale: 1.03; opacity: 0.92; transition: scale var(--d-press) var(--ease), opacity var(--d-press) var(--ease); }
+.tarjeta.soltando { position: relative; z-index: 2; }

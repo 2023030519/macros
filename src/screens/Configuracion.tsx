@@ -72,6 +72,7 @@ export default function Configuracion({ tema, onTema, color, onColor, texto, onT
       </Seccion>
 
       <Seccion titulo="Pantalla Hoy" resumen="Qué tarjetas ves y en qué orden">
+        <span className="sub">También puedes mantener presionada una tarjeta en Hoy y arrastrarla.</span>
         <div className="list" style={{ background: "var(--surface2)" }}>
           {hoy.orden.map((t, i) => {
             const visible = !hoy.ocultas.includes(t);

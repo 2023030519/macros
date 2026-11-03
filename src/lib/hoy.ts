@@ -17,3 +17,10 @@ export function mover(orden: Tarjeta[], t: Tarjeta, paso: -1 | 1): Tarjeta[] {
   [out[i], out[j]] = [out[j], out[i]];
   return out;
 }
+
+// Arrastrar en Hoy: k queda en la posición `a` entre las visibles; las ocultas van al final.
+export function reubicar({ orden, ocultas }: PrefHoy, k: Tarjeta, a: number): Tarjeta[] {
+  const vis = orden.filter((t) => t !== k && !ocultas.includes(t));
+  vis.splice(a, 0, k);
+  return [...vis, ...orden.filter((t) => ocultas.includes(t))];
+}

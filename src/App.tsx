@@ -342,6 +342,7 @@ export default function App() {
         onTouchEnd={finToque}>
       {tab === "hoy" && (
         <Hoy dia={dia} log={log} dias={dias} meta={meta} pref={prefHoy}
+          onOrden={async (orden) => { const h = { ...prefHoy, orden }; await save("hoy", h); setPrefHoy(h); }}
           onAdd={(m) => { setMeal(m); irA("alimentos"); }}
           onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }} />
       )}
