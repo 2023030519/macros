@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { MEALS, type MealId } from "../data/foods.ts";
 import type { plan } from "../lib/calc.ts";
 import { racha, sumarDias } from "../lib/dias.ts";
 import { sumar } from "../lib/receta.ts";
 import type { Entrada } from "../lib/store.ts";
+import type { PrefHoy, Tarjeta } from "../lib/hoy.ts";
 import { Chevron, Close, Flame, Macros, Plus, cap, fmt } from "../ui.tsx";
 
-type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
+type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
 
 const fecha = (dia: string) => {
   const [y, m, d] = dia.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
-export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
+export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Props) {
   const [abierto, setAbierto] = useState<MealId | null>(null);
   const t = sumar(log);
   const resto = meta.kcal_objetivo - t.kcal;
@@ -21,16 +22,8 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
   const r = racha(dias, dia);
   const semana = [6, 5, 4, 3, 2, 1, 0].map((i) => sumarDias(dia, -i));
 
-  return (
-    <main className="screen">
-      <header className="head">
-        <div>
-          <span className="kicker">{cap(fecha(dia).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" }).replace(",", ""))}</span>
-          <h1>Hoy</h1>
-        </div>
-        <span className="pill" aria-label={`Racha de ${r} días`}><Flame />{r}</span>
-      </header>
-
+  const bloques: Record<Tarjeta, JSX.Element> = {
+    calorias: (
       <section className="card" aria-label="Calorías del día">
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <div style={{ position: "relative", width: 124, height: 124, flexShrink: 0 }}>
@@ -59,7 +52,8 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
           ))}
         </div>
       </section>
-
+    ),
+    semana: (
       <section className="card" aria-label="Últimos 7 días" style={{ borderRadius: "var(--r-lg)", padding: "var(--s3) var(--s4)", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <div className="week">
           {semana.map((d) => (
@@ -70,7 +64,9 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
           ))}
         </div>
       </section>
-
+    ),
+    comidas: (
+      <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 4 }}>
         <h2>Comidas</h2>
         <span className="sub">{MEALS.length} tiempos</span>
@@ -107,6 +103,21 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
           );
         })}
       </div>
+      </>
+    ),
+  };
+
+  return (
+    <main className="screen">
+      <header className="head">
+        <div>
+          <span className="kicker">{cap(fecha(dia).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" }).replace(",", ""))}</span>
+          <h1>Hoy</h1>
+        </div>
+        <span className="pill" aria-label={`Racha de ${r} días`}><Flame />{r}</span>
+      </header>
+
+      {pref.orden.filter((k) => !pref.ocultas.includes(k)).map((k) => <Fragment key={k}>{bloques[k]}</Fragment>)}
     </main>
   );
 }

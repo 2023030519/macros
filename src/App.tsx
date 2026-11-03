@@ -14,7 +14,8 @@ import Menu from "./screens/Menu.tsx";
 import Actualizaciones from "./screens/Actualizaciones.tsx";
 import { normalizarMenu, type MenuSemanal } from "./lib/menu.ts";
 import { apkNuevo, buscarReleases, type EstadoUpd } from "./lib/version.ts";
-import Configuracion, { type Color, type Tema } from "./screens/Configuracion.tsx";
+import Configuracion, { type Color, type Densidad, type Tema, type Texto } from "./screens/Configuracion.tsx";
+import { HOY_DEFAULT, normalizarHoy, type PrefHoy } from "./lib/hoy.ts";
 import Objetivos, { TusDatos } from "./screens/Objetivos.tsx";
 import Recetas, { EditarReceta } from "./screens/Recetas.tsx";
 import { avisar, uid } from "./ui.tsx";
@@ -49,6 +50,9 @@ export default function App() {
   const [refresco, setRefresco] = useState(0);
   const [tema, setTema] = useState<Tema>("sistema");
   const [color, setColor] = useState<Color>("neutro");
+  const [texto, setTexto] = useState<Texto>("normal");
+  const [densidad, setDensidad] = useState<Densidad>("comoda");
+  const [prefHoy, setPrefHoy] = useState<PrefHoy>(HOY_DEFAULT);
   // base compartida (data/alimentos.json en GitHub) y el token para escribirla; sin token solo se lee
   const [base, setBase] = useState<Base>(VACIA);
   const [token, setToken] = useState("");
@@ -62,11 +66,13 @@ export default function App() {
 
   async function cargar() {
     const d = hoy();
-    const [p, m, r, mn, l, ds, t, oc, co, b, tk] = await Promise.all([
+    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
       load<Record<string, Record<string, Item>>>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
       load<Color>("color", "neutro"), load<Base>("base", VACIA), load<string>("token", ""),
+      load<Texto>("texto", "normal"), load<Densidad>("densidad", "comoda"), load<PrefHoy | null>("hoy", null),
     ]);
+    setTexto(tx); setDensidad(dn); setPrefHoy(normalizarHoy(ph));
     setBase(b); setToken(tk);
     setPerfil(p); setMios(m); setRecetas(r); setMenu(normalizarMenu(mn)); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
     diaRef.current = d;
@@ -90,7 +96,9 @@ export default function App() {
     if (tema === "sistema") delete html.dataset.theme;
     else html.dataset.theme = tema === "claro" ? "light" : "dark";
     html.dataset.color = color;
-  }, [tema, color]);
+    html.dataset.texto = texto;
+    html.dataset.dens = densidad;
+  }, [tema, color, texto, densidad]);
 
   function refrescar() {
     setRefresco((r) => r + 1);
@@ -287,6 +295,9 @@ export default function App() {
       <Configuracion upd={upd} onActualizaciones={() => setVerUpd(true)} tema={tema} color={color} ocultos={ocultos.length} onCerrar={() => setConfig(false)}
         onTema={async (t) => { await save("tema", t); setTema(t); }}
         onColor={async (c) => { await save("color", c); setColor(c); }}
+        texto={texto} onTexto={async (t) => { await save("texto", t); setTexto(t); }}
+        densidad={densidad} onDensidad={async (d) => { await save("densidad", d); setDensidad(d); }}
+        hoy={prefHoy} onHoy={async (h) => { await save("hoy", h); setPrefHoy(h); }}
         onExportar={() => compartirPaquete(null)} onImportar={async (t) => { const r = await importar(t); if (r) avisar("Importado"); return r; }}
         token={token} onToken={async (t) => { await save("token", t); setToken(t); }} mios={Object.keys(mios).length} onSubirMios={subirMios}
         onRestaurar={() => guardarOcultos([])} />
@@ -330,7 +341,7 @@ export default function App() {
         }}
         onTouchEnd={finToque}>
       {tab === "hoy" && (
-        <Hoy dia={dia} log={log} dias={dias} meta={meta}
+        <Hoy dia={dia} log={log} dias={dias} meta={meta} pref={prefHoy}
           onAdd={(m) => { setMeal(m); irA("alimentos"); }}
           onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }} />
       )}
