@@ -197,3 +197,4 @@ button.row { width: 100%; min-height: 52px; background: none; border: 0; border-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after, ::details-content { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+.aparece { animation: aparecer var(--d-ui) var(--ease); }

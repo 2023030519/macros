@@ -4,7 +4,7 @@ import type { plan } from "../lib/calc.ts";
 import { racha, sumarDias } from "../lib/dias.ts";
 import { sumar } from "../lib/receta.ts";
 import type { Entrada } from "../lib/store.ts";
-import { Close, Flame, Macros, Plus, cap, fmt } from "../ui.tsx";
+import { Chevron, Close, Flame, Macros, Plus, cap, fmt } from "../ui.tsx";
 
 type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
 
@@ -36,10 +36,10 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
           <div style={{ position: "relative", width: 124, height: 124, flexShrink: 0 }}>
             <svg width="124" height="124" viewBox="0 0 124 124" role="img" aria-label={`${fmt(t.kcal)} de ${fmt(meta.kcal_objetivo)} kcal consumidas`}>
               <circle cx="62" cy="62" r="54" fill="none" stroke="var(--surface2)" strokeWidth="10" />
-              <circle cx="62" cy="62" r="54" fill="none" stroke={resto < 0 ? "var(--warn)" : "var(--accent)"} strokeWidth="10" strokeLinecap={arco > 0 ? "round" : "butt"} strokeDasharray={`${arco} 339.3`} transform="rotate(-90 62 62)" />
+              <circle className="arco" cx="62" cy="62" r="54" fill="none" stroke={resto < 0 ? "var(--warn)" : "var(--accent)"} strokeWidth="10" strokeLinecap={arco > 0 ? "round" : "butt"} strokeDasharray={`${arco} 339.3`} transform="rotate(-90 62 62)" />
             </svg>
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em" }}>{fmt(Math.abs(resto))}</span>
+              <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.04em" }}>{fmt(Math.abs(resto))}</span>
               <span className="muted" style={{ fontSize: 11, fontWeight: 500 }}>{resto < 0 ? "kcal de más" : "kcal restantes"}</span>
             </div>
           </div>
@@ -60,7 +60,7 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
         </div>
       </section>
 
-      <section className="card" aria-label="Últimos 7 días" style={{ borderRadius: 20, padding: "14px 16px", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+      <section className="card" aria-label="Últimos 7 días" style={{ borderRadius: "var(--r-lg)", padding: "var(--s3) var(--s4)", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <div className="week">
           {semana.map((d) => (
             <div key={d}>
@@ -87,6 +87,7 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
                   <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     <span className="name">{m.label}</span>
                     {es.length > 0 && <span className="sub">{fmt(s.kcal)} kcal</span>}
+                    {es.length > 0 && <span className="chev" aria-hidden="true" style={{ alignSelf: "center", transform: abierto === m.id ? "rotate(180deg)" : undefined }}><Chevron /></span>}
                   </span>
                   <span className="sub ellipsis" style={{ fontWeight: 400 }}>{es.length ? es.map((e) => cap(e.name)).join(" · ") : "Sin registrar"}</span>
                   {es.length > 0 && <Macros {...s} />}
@@ -94,7 +95,7 @@ export default function Hoy({ dia, log, dias, meta, onAdd, onRemove }: Props) {
                 <button className={`icon-btn ${es.length ? "" : "solid"}`} aria-label={`Agregar a ${m.label}`} onClick={() => onAdd(m.id)}><Plus /></button>
               </div>
               {abierto === m.id && es.map((e) => (
-                <div key={e.id} className="row" style={{ paddingLeft: 28, borderBottom: 0, paddingTop: 0 }}>
+                <div key={e.id} className="row aparece" style={{ paddingLeft: 28, borderBottom: 0, paddingTop: 0 }}>
                   <div className="grow">
                     <span style={{ fontSize: 14, fontWeight: 500 }} className="ellipsis">{cap(e.name)}</span>
                     <span className="sub">{fmt(e.grams)} g · {fmt(e.kcal)} kcal</span>
