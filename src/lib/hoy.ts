@@ -10,7 +10,7 @@ export function normalizarHoy(raw: Partial<PrefHoy> | null | undefined): PrefHoy
   return { orden: [...new Set([...ok(raw?.orden), ...TARJETAS])], ocultas: [...new Set(ok(raw?.ocultas))] };
 }
 
-export function mover(orden: Tarjeta[], t: Tarjeta, paso: -1 | 1): Tarjeta[] {
+export function mover<T>(orden: T[], t: T, paso: -1 | 1): T[] {
   const i = orden.indexOf(t), j = i + paso;
   if (i < 0 || j < 0 || j >= orden.length) return orden;
   const out = [...orden];

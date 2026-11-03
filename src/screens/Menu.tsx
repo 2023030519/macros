@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { MEALS, type FoodRow, type MealId } from "../data/foods.ts";
+import type { FoodRow, MealId } from "../data/foods.ts";
+import { mostrar, nombreTiempo, type PrefComidas } from "../lib/comidas.ts";
 import type { plan } from "../lib/calc.ts";
 import { lunes, sumarDias } from "../lib/dias.ts";
 import type { MenuSemanal } from "../lib/menu.ts";
@@ -14,8 +15,8 @@ const fecha = (dia: string) => {
 };
 const corta = (dia: string) => fecha(dia).toLocaleDateString("es-MX", { day: "numeric", month: "short" }).replace(".", "");
 
-export default function Menu({ dia, menu, meta, foods, onAgregar, onQuitar, onDuplicar, onAplicar, onNuevoAlimento }: {
-  dia: string; menu: MenuSemanal; meta: ReturnType<typeof plan>; foods: Record<string, FoodRow>;
+export default function Menu({ dia, menu, meta, foods, comidas, onAgregar, onQuitar, onDuplicar, onAplicar, onNuevoAlimento }: {
+  dia: string; menu: MenuSemanal; meta: ReturnType<typeof plan>; foods: Record<string, FoodRow>; comidas: PrefComidas;
   onAgregar: (d: string, m: MealId, it: Item) => void; onQuitar: (d: string, m: MealId, i: number) => void; onDuplicar: (lunes: string) => Promise<boolean>; onAplicar: (d: string) => void; onNuevoAlimento: (n: string, r: FoodRow) => Promise<void>;
 }) {
   const [semana, setSemana] = useState(lunes(dia));
@@ -24,6 +25,7 @@ export default function Menu({ dia, menu, meta, foods, onAgregar, onQuitar, onDu
   const dias = [0, 1, 2, 3, 4, 5, 6].map((i) => sumarDias(semana, i));
   const delDia = (d: string) => Object.values(menu[d] ?? {}).flat() as Item[];
   const t = sumar(delDia(sel));
+  const tiempos = mostrar(comidas, Object.keys(menu[sel] ?? {}));
   const libres = meta.kcal_objetivo - t.kcal;
 
   function moverSemana(n: number) {
@@ -74,7 +76,7 @@ export default function Menu({ dia, menu, meta, foods, onAgregar, onQuitar, onDu
       </section>
 
       <div className="list">
-        {MEALS.map((m) => {
+        {tiempos.map((m) => {
           const its = menu[sel]?.[m.id] ?? [];
           return (
             <div key={m.id} className="meal">
@@ -103,7 +105,7 @@ export default function Menu({ dia, menu, meta, foods, onAgregar, onQuitar, onDu
       </div>
 
       {agregando && (
-        <Elegir title={`Agregar a ${MEALS.find((x) => x.id === agregando)!.label}`} boton="Agregar al menú" foods={foods} onNuevo={onNuevoAlimento} onClose={() => setAgregando(null)}
+        <Elegir title={`Agregar a ${nombreTiempo(comidas, agregando)}`} boton="Agregar al menú" foods={foods} onNuevo={onNuevoAlimento} onClose={() => setAgregando(null)}
           onPick={(it) => { onAgregar(sel, agregando, it); setAgregando(null); }} />
       )}
     </main>

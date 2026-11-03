@@ -1,25 +1,24 @@
 import { useMemo, useState } from "react";
-import { MEALS, PRODUCTOS, RECETAS, type FoodRow, type MealId } from "../data/foods.ts";
+import { PRODUCTOS, RECETAS, type FoodRow, type MealId } from "../data/foods.ts";
+import { mostrar, nombreTiempo, type PrefComidas } from "../lib/comidas.ts";
 import type { Entrada } from "../lib/store.ts";
 import { Close, Macros, Minus, Opciones, Plus, Search, Sheet, barra, cap, fmt, preguntar, salir, uid } from "../ui.tsx";
 
 type Fuente = "General" | "Producto" | "Receta" | "Mío";
 type Props = {
-  foods: Record<string, FoodRow>; mios: Record<string, FoodRow>; recetas: Set<string>; meal: MealId; setMeal: (m: MealId) => void;
+  foods: Record<string, FoodRow>; mios: Record<string, FoodRow>; recetas: Set<string>; meal: MealId; setMeal: (m: MealId) => void; comidas: PrefComidas;
   consumidas: number; meta: number; onAdd: (e: Entrada) => Promise<void>;
   onGuardar: (name: string, row: FoodRow, anterior: string | null) => Promise<void>; onBorrar: (name: string) => Promise<void>; onEditarReceta: (name: string) => void; onCompartir: (name: string) => void;
 };
 
 export const sinAcentos = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 export const porcionTxt = (r: FoodRow) => (r[5] ? `${r[5].cantidad} ${r[5].unidad} · ${fmt(r[5].gramos)} g` : "100 g");
-const mealLabel = (m: MealId) => MEALS.find((x) => x.id === m)!.label;
 
-const COMIDAS = MEALS.map((m) => [m.id, m.label] as const);
-function MealSelect({ id, meal, setMeal, ancho }: { id: string; meal: MealId; setMeal: (m: MealId) => void; ancho?: boolean }) {
-  return <Opciones id={id} titulo="Agregar a" value={meal} options={COMIDAS} onChange={setMeal} style={{ height: 44, paddingRight: 10, width: ancho ? undefined : "auto" }} />;
+function MealSelect({ id, meal, setMeal, comidas, ancho }: { id: string; meal: MealId; setMeal: (m: MealId) => void; comidas: PrefComidas; ancho?: boolean }) {
+  return <Opciones id={id} titulo="Agregar a" value={meal} options={mostrar(comidas).map((t) => [t.id, t.label] as const)} onChange={setMeal} style={{ height: 44, paddingRight: 10, width: ancho ? undefined : "auto" }} />;
 }
 
-export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumidas, meta, onAdd, onGuardar, onBorrar, onEditarReceta, onCompartir }: Props) {
+export default function Alimentos({ foods, mios, recetas, meal, setMeal, comidas, consumidas, meta, onAdd, onGuardar, onBorrar, onEditarReceta, onCompartir }: Props) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Fuente | "Todos">("Todos");
   const [sel, setSel] = useState<string | null>(null);
@@ -78,7 +77,7 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 2px 0" }}>
         <label htmlFor="meal-lista" className="kicker">Agregando a</label>
-        <MealSelect id="meal-lista" meal={meal} setMeal={setMeal} />
+        <MealSelect id="meal-lista" meal={meal} setMeal={setMeal} comidas={comidas} />
       </div>
 
       <div className="list">
@@ -90,7 +89,7 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
       </div>
 
       {sel && (
-        <AgregarSheet name={sel} row={mios[sel] ?? foods[sel]} fuente={fuente(sel)} meal={meal} setMeal={setMeal} consumidas={consumidas} meta={meta}
+        <AgregarSheet name={sel} row={mios[sel] ?? foods[sel]} fuente={fuente(sel)} meal={meal} setMeal={setMeal} comidas={comidas} consumidas={consumidas} meta={meta}
           onClose={() => setSel(null)} onAdd={async (e) => { await onAdd(e); setSel(null); }} />
       )}
       {nuevo && <AlimentoSheet inicial={nuevo} existe={(n) => n in foods || n in mios} onClose={() => setNuevo(null)} onSave={async (n, r) => { await onGuardar(n, r, nuevo.anterior); setNuevo(null); setQ(""); setFiltro("Mío"); }} />}
@@ -120,8 +119,8 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
   );
 }
 
-function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onClose, onAdd }: {
-  name: string; row: FoodRow; fuente: Fuente; meal: MealId; setMeal: (m: MealId) => void; consumidas: number; meta: number;
+function AgregarSheet({ name, row, fuente, meal, setMeal, comidas, consumidas, meta, onClose, onAdd }: {
+  name: string; row: FoodRow; fuente: Fuente; meal: MealId; setMeal: (m: MealId) => void; comidas: PrefComidas; consumidas: number; meta: number;
   onClose: () => void; onAdd: (e: Entrada) => Promise<void>;
 }) {
   const [gramos, setGramos] = useState(String(row[5]?.gramos ?? 100));
@@ -158,7 +157,7 @@ function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onCl
 
       <div className="field">
         <label htmlFor="meal-sheet" className="label">Agregar a</label>
-        <MealSelect id="meal-sheet" meal={meal} setMeal={setMeal} ancho />
+        <MealSelect id="meal-sheet" meal={meal} setMeal={setMeal} comidas={comidas} ancho />
       </div>
 
       <div className="grid4">
@@ -177,7 +176,7 @@ function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onCl
         </div>
       </div>
 
-      <button className="primary" disabled={!ok} onClick={() => onAdd({ id: uid(), meal, name, grams: g, ...e })}>Agregar a {mealLabel(meal)}</button>
+      <button className="primary" disabled={!ok} onClick={() => onAdd({ id: uid(), meal, name, grams: g, ...e })}>Agregar a {nombreTiempo(comidas, meal)}</button>
     </Sheet>
   );
 }

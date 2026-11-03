@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { agregarTiempo, type PrefComidas } from "../lib/comidas.ts";
 import { mover, type PrefHoy, type Tarjeta } from "../lib/hoy.ts";
 import { apkNuevo, type EstadoUpd } from "../lib/version.ts";
 import { Chevron, Seg } from "../ui.tsx";
@@ -35,9 +36,9 @@ function Seccion({ titulo, resumen, abierta, children }: { titulo: string; resum
   );
 }
 
-export default function Configuracion({ tema, onTema, color, onColor, texto, onTexto, densidad, onDensidad, hoy, onHoy, ocultos, onRestaurar, onExportar, onImportar, token, onToken, mios, onSubirMios, upd, onActualizaciones, onCerrar }: {
+export default function Configuracion({ tema, onTema, color, onColor, texto, onTexto, densidad, onDensidad, hoy, onHoy, comidas, onComidas, ocultos, onRestaurar, onExportar, onImportar, token, onToken, mios, onSubirMios, upd, onActualizaciones, onCerrar }: {
   tema: Tema; onTema: (t: Tema) => void; color: Color; onColor: (c: Color) => void;
-  texto: Texto; onTexto: (t: Texto) => void; densidad: Densidad; onDensidad: (d: Densidad) => void; hoy: PrefHoy; onHoy: (h: PrefHoy) => void;
+  texto: Texto; onTexto: (t: Texto) => void; densidad: Densidad; onDensidad: (d: Densidad) => void; hoy: PrefHoy; onHoy: (h: PrefHoy) => void; comidas: PrefComidas; onComidas: (c: PrefComidas) => void;
   ocultos: number; onRestaurar: () => void;
   onExportar: () => Promise<void>; onImportar: (texto: string) => Promise<string | null>;
   token: string; onToken: (t: string) => Promise<void>; mios: number; onSubirMios: () => Promise<string>;
@@ -46,6 +47,8 @@ export default function Configuracion({ tema, onTema, color, onColor, texto, onT
   const [aviso, setAviso] = useState("");
   const [nuevoToken, setNuevoToken] = useState("");
   const [avisoBase, setAvisoBase] = useState("");
+  const [nuevoTiempo, setNuevoTiempo] = useState("");
+  const nVisibles = comidas.lista.length - comidas.ocultas.length;
 
   const nueva = apkNuevo(upd, __VERSION__);
 
@@ -87,6 +90,31 @@ export default function Configuracion({ tema, onTema, color, onColor, texto, onT
             );
           })}
         </div>
+      </Seccion>
+
+      <Seccion titulo="Tiempos de comida" resumen={`${nVisibles} en tu día`}>
+        <span className="sub">Oculta los que no haces (por ejemplo, el desayuno si ayunas) o agrega más. Lo ya registrado no se pierde.</span>
+        <div className="list" style={{ background: "var(--surface2)" }}>
+          {comidas.lista.map((t, i) => {
+            const visible = !comidas.ocultas.includes(t.id);
+            return (
+              <div key={t.id} className="row" style={{ paddingTop: 6, paddingBottom: 6 }}>
+                <span className="grow"><span className="name ellipsis" style={{ opacity: visible ? 1 : 0.5 }}>{t.label}</span></span>
+                <button className="icon-btn" style={{ background: "var(--surface)" }} aria-label={`Subir ${t.label}`} disabled={i === 0} onClick={() => onComidas({ ...comidas, lista: mover(comidas.lista, t, -1) })}>↑</button>
+                <button className="icon-btn" style={{ background: "var(--surface)" }} aria-label={`Bajar ${t.label}`} disabled={i === comidas.lista.length - 1} onClick={() => onComidas({ ...comidas, lista: mover(comidas.lista, t, 1) })}>↓</button>
+                <button className="pill" style={{ minWidth: 84, justifyContent: "center", background: visible ? "var(--surface)" : "transparent" }} aria-pressed={visible} disabled={visible && nVisibles === 1}
+                  onClick={() => onComidas({ ...comidas, ocultas: visible ? [...comidas.ocultas, t.id] : comidas.ocultas.filter((x) => x !== t.id) })}>{visible ? "Visible" : "Oculto"}</button>
+              </div>
+            );
+          })}
+        </div>
+        <form style={{ display: "flex", gap: 8 }} onSubmit={(e) => { e.preventDefault(); if (nuevoTiempo.trim()) onComidas(agregarTiempo(comidas, nuevoTiempo)); setNuevoTiempo(""); }}>
+          <div className="box" style={{ flex: 1, height: 44 }}>
+            <label htmlFor="tiempo" className="sr">Nuevo tiempo de comida</label>
+            <input id="tiempo" placeholder="Ej. Colación noche" maxLength={24} value={nuevoTiempo} onChange={(e) => setNuevoTiempo(e.target.value)} style={{ fontSize: 14, fontWeight: 500 }} />
+          </div>
+          <button className="pill solid" style={{ height: 44 }} disabled={!nuevoTiempo.trim()}>Agregar</button>
+        </form>
       </Seccion>
 
       <Seccion titulo="Datos" resumen="Compartir, importar y restaurar">

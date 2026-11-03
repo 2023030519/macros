@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MEALS, type MealId } from "../data/foods.ts";
+import type { MealId } from "../data/foods.ts";
+import { mostrar, type PrefComidas } from "../lib/comidas.ts";
 import type { plan } from "../lib/calc.ts";
 import { racha, sumarDias } from "../lib/dias.ts";
 import { sumar } from "../lib/receta.ts";
@@ -7,14 +8,15 @@ import type { Entrada } from "../lib/store.ts";
 import { reubicar, type PrefHoy, type Tarjeta } from "../lib/hoy.ts";
 import { Chevron, Close, Flame, Macros, Plus, barra, cap, fmt, salir } from "../ui.tsx";
 
-type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
+type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; comidas: PrefComidas; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
 
 const fecha = (dia: string) => {
   const [y, m, d] = dia.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
-export default function Hoy({ dia, log, dias, meta, pref, onOrden, onAdd, onRemove }: Props) {
+export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAdd, onRemove }: Props) {
+  const tiempos = mostrar(comidas, log.map((e) => e.meal));
   const [abierto, setAbierto] = useState<MealId | null>(null);
   // orden recién soltado, mientras se guarda
   const [local, setLocal] = useState<Tarjeta[] | null>(null);
@@ -164,11 +166,11 @@ export default function Hoy({ dia, log, dias, meta, pref, onOrden, onAdd, onRemo
       <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 4 }}>
         <h2>Comidas</h2>
-        <span className="sub">{MEALS.length} tiempos</span>
+        <span className="sub">{tiempos.length} {tiempos.length === 1 ? "tiempo" : "tiempos"}</span>
       </div>
 
       <div className="list">
-        {MEALS.map((m) => {
+        {tiempos.map((m) => {
           const es = log.filter((e) => e.meal === m.id);
           const s = sumar(es);
           return (

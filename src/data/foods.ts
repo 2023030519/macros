@@ -204,4 +204,5 @@ export const MEALS = [
   { id: "colacion2", label: "Colación PM" },
   { id: "cena", label: "Cena" },
 ] as const;
-export type MealId = (typeof MEALS)[number]["id"];
+// MEALS son los tiempos de siempre; el usuario puede ocultarlos y agregar más (lib/comidas.ts)
+export type MealId = string;

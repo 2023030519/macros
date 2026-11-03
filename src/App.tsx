@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DB, MEALS, type FoodRow, type MealId } from "./data/foods.ts";
+import { DB, type FoodRow, type MealId } from "./data/foods.ts";
 import { plan, type Perfil } from "./lib/calc.ts";
 import { hoy, sumarDias } from "./lib/dias.ts";
 import { VACIA, aplicarBase, bajar, editarBase, subir, type Base } from "./lib/base.ts";
@@ -16,6 +16,7 @@ import { normalizarMenu, type MenuSemanal } from "./lib/menu.ts";
 import { apkNuevo, buscarReleases, type EstadoUpd } from "./lib/version.ts";
 import Configuracion, { type Color, type Densidad, type Tema, type Texto } from "./screens/Configuracion.tsx";
 import { HOY_DEFAULT, normalizarHoy, type PrefHoy } from "./lib/hoy.ts";
+import { COMIDAS_DEFAULT, mostrar, nombreTiempo, normalizarComidas, type PrefComidas } from "./lib/comidas.ts";
 import Objetivos, { TusDatos } from "./screens/Objetivos.tsx";
 import Recetas, { EditarReceta } from "./screens/Recetas.tsx";
 import { avisar, preguntar, uid } from "./ui.tsx";
@@ -53,6 +54,12 @@ export default function App() {
   const [texto, setTexto] = useState<Texto>("normal");
   const [densidad, setDensidad] = useState<Densidad>("comoda");
   const [prefHoy, setPrefHoy] = useState<PrefHoy>(HOY_DEFAULT);
+  const [comidas, setComidas] = useState<PrefComidas>(COMIDAS_DEFAULT);
+  // si el tiempo elegido para agregar se ocultó, pasa al primero visible
+  const visibles = mostrar(comidas);
+  useEffect(() => {
+    if (!visibles.some((t) => t.id === meal)) setMeal(visibles[0].id);
+  }, [comidas, meal]);
   // base compartida (data/alimentos.json en GitHub) y el token para escribirla; sin token solo se lee
   const [base, setBase] = useState<Base>(VACIA);
   const [token, setToken] = useState("");
@@ -66,13 +73,13 @@ export default function App() {
 
   async function cargar() {
     const d = hoy();
-    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph] = await Promise.all([
+    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph, cm] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
       load<Record<string, Record<string, Item>>>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
       load<Color>("color", "neutro"), load<Base>("base", VACIA), load<string>("token", ""),
-      load<Texto>("texto", "normal"), load<Densidad>("densidad", "comoda"), load<PrefHoy | null>("hoy", null),
+      load<Texto>("texto", "normal"), load<Densidad>("densidad", "comoda"), load<PrefHoy | null>("hoy", null), load<PrefComidas | null>("comidas", null),
     ]);
-    setTexto(tx); setDensidad(dn); setPrefHoy(normalizarHoy(ph));
+    setTexto(tx); setDensidad(dn); setPrefHoy(normalizarHoy(ph)); setComidas(normalizarComidas(cm));
     setBase(b); setToken(tk);
     setPerfil(p); setMios(m); setRecetas(r); setMenu(normalizarMenu(mn)); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
     diaRef.current = d;
@@ -298,6 +305,7 @@ export default function App() {
         texto={texto} onTexto={async (t) => { await save("texto", t); setTexto(t); }}
         densidad={densidad} onDensidad={async (d) => { await save("densidad", d); setDensidad(d); }}
         hoy={prefHoy} onHoy={async (h) => { await save("hoy", h); setPrefHoy(h); }}
+        comidas={comidas} onComidas={async (c) => { await save("comidas", c); setComidas(c); }}
         onExportar={() => compartirPaquete(null)} onImportar={async (t) => { const r = await importar(t); if (r) avisar("Importado"); return r; }}
         token={token} onToken={async (t) => { await save("token", t); setToken(t); }} mios={Object.keys(mios).length} onSubirMios={subirMios}
         onRestaurar={() => guardarOcultos([])} />
@@ -341,19 +349,19 @@ export default function App() {
         }}
         onTouchEnd={finToque}>
       {tab === "hoy" && (
-        <Hoy dia={dia} log={log} dias={dias} meta={meta} pref={prefHoy}
+        <Hoy dia={dia} log={log} dias={dias} meta={meta} pref={prefHoy} comidas={comidas}
           onOrden={async (orden) => { const h = { ...prefHoy, orden }; await save("hoy", h); setPrefHoy(h); }}
           onAdd={(m) => { setMeal(m); irA("alimentos"); }}
           onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }} />
       )}
       {tab === "alimentos" && (
-        <Alimentos foods={foods} mios={mios} recetas={new Set(Object.keys(recetas))} meal={meal} setMeal={setMeal} consumidas={sumar(log).kcal} meta={meta.kcal_objetivo}
-          onAdd={async (e) => { await guardarLog([...log, e]); avisar(`Agregado a ${MEALS.find((m) => m.id === e.meal)!.label}`); }}
+        <Alimentos foods={foods} mios={mios} recetas={new Set(Object.keys(recetas))} meal={meal} setMeal={setMeal} comidas={comidas} consumidas={sumar(log).kcal} meta={meta.kcal_objetivo}
+          onAdd={async (e) => { await guardarLog([...log, e]); avisar(`Agregado a ${nombreTiempo(comidas, e.meal)}`); }}
           onGuardar={guardarAlimento} onBorrar={borrarAlimento} onEditarReceta={setReceta} onCompartir={(n) => compartirPaquete([n]).catch(() => {})} />
       )}
       {tab === "recetas" && <Recetas recetas={recetas} onEditar={setReceta} />}
       {tab === "menu" && (
-        <Menu dia={dia} menu={menu} meta={meta} foods={todo} onNuevoAlimento={(n, r) => guardarAlimento(n, r, null)}
+        <Menu dia={dia} menu={menu} meta={meta} foods={todo} comidas={comidas} onNuevoAlimento={(n, r) => guardarAlimento(n, r, null)}
           onAgregar={async (d, m, it) => {
             await guardarMenu({ ...menu, [d]: { ...menu[d], [m]: [...(menu[d]?.[m] ?? []), it] } });
             avisar("Agregado al menú");
@@ -381,7 +389,7 @@ export default function App() {
           }}
           onAplicar={async (d) => {
             if (log.length && !(await preguntar({ titulo: "Hoy ya tienes comidas registradas", texto: "El menú se agrega a lo que ya registraste.", si: "Agregar el menú" }))) return;
-            const nuevas = MEALS.flatMap((m) => (menu[d]?.[m.id] ?? []).map((it) => ({ ...it, id: uid(), meal: m.id })));
+            const nuevas = Object.entries(menu[d] ?? {}).flatMap(([m, its]) => (its ?? []).map((it) => ({ ...it, id: uid(), meal: m })));
             await guardarLog([...log, ...nuevas]);
             irA("hoy");
             avisar("Menú agregado a hoy");
