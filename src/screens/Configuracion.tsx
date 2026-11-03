@@ -93,13 +93,19 @@ export default function Configuracion({ tema, onTema, color, onColor, texto, onT
       </Seccion>
 
       <Seccion titulo="Tiempos de comida" resumen={`${nVisibles} en tu día`}>
-        <span className="sub">Oculta los que no haces (por ejemplo, el desayuno si ayunas) o agrega más. Lo ya registrado no se pierde.</span>
+        <span className="sub">Toca un nombre para cambiarlo. Oculta los que no haces (por ejemplo, el desayuno si ayunas) o agrega más. Lo ya registrado no se pierde.</span>
         <div className="list" style={{ background: "var(--surface2)" }}>
           {comidas.lista.map((t, i) => {
             const visible = !comidas.ocultas.includes(t.id);
             return (
               <div key={t.id} className="row" style={{ paddingTop: 6, paddingBottom: 6 }}>
-                <span className="grow"><span className="name ellipsis" style={{ opacity: visible ? 1 : 0.5 }}>{t.label}</span></span>
+                <input className="name renombrar" aria-label={`Nombre de ${t.label}`} defaultValue={t.label} maxLength={24} enterKeyHint="done" style={{ opacity: visible ? 1 : 0.5 }}
+                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                  onBlur={(e) => {
+                    const v = e.currentTarget.value.trim();
+                    if (!v) e.currentTarget.value = t.label; // vacío no: vuelve el nombre anterior
+                    else if (v !== t.label) onComidas({ ...comidas, lista: comidas.lista.map((x) => (x.id === t.id ? { ...x, label: v } : x)) });
+                  }} />
                 <button className="icon-btn" style={{ background: "var(--surface)" }} aria-label={`Subir ${t.label}`} disabled={i === 0} onClick={() => onComidas({ ...comidas, lista: mover(comidas.lista, t, -1) })}>↑</button>
                 <button className="icon-btn" style={{ background: "var(--surface)" }} aria-label={`Bajar ${t.label}`} disabled={i === comidas.lista.length - 1} onClick={() => onComidas({ ...comidas, lista: mover(comidas.lista, t, 1) })}>↓</button>
                 <button className="pill" style={{ minWidth: 84, justifyContent: "center", background: visible ? "var(--surface)" : "transparent" }} aria-pressed={visible} disabled={visible && nVisibles === 1}

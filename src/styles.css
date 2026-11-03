@@ -214,3 +214,6 @@ button.row { width: 100%; min-height: 52px; background: none; border: 0; border-
 .tarjeta { display: flex; flex-direction: column; gap: var(--s4); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform var(--d-ui) var(--ease); }
 .tarjeta.arrastrando { position: relative; z-index: 2; scale: 1.03; opacity: 0.92; transition: scale var(--d-press) var(--ease), opacity var(--d-press) var(--ease); }
 .tarjeta.soltando { position: relative; z-index: 2; }
+/* Nombre editable en una lista (tiempos de comida): parece texto, la línea punteada avisa que se puede tocar. */
+.renombrar { flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; background: transparent; padding: 6px 0; outline: none; }
+.renombrar:focus { border-bottom: 2px solid var(--text); padding-bottom: 5px; }
