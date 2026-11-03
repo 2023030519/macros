@@ -168,7 +168,7 @@ button.row, .press, .fold > summary { transition: background-color var(--d-press
 .chev { display: flex; color: var(--muted); transition: transform var(--d-ui) var(--ease); }
 .fold[open] > summary .chev { transform: rotate(180deg); }
 
-.week { display: flex; gap: 6px; }
+.week { flex: 1; display: flex; justify-content: space-between; gap: 6px; }
 .week > div { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); font-weight: 600; }
 .wd { width: 22px; height: 22px; border-radius: var(--r-full); box-sizing: border-box; }
 .wd.done { background: var(--accent); }
