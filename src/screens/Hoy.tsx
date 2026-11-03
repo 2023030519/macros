@@ -5,7 +5,7 @@ import { racha, sumarDias } from "../lib/dias.ts";
 import { sumar } from "../lib/receta.ts";
 import type { Entrada } from "../lib/store.ts";
 import type { PrefHoy, Tarjeta } from "../lib/hoy.ts";
-import { Chevron, Close, Flame, Macros, Plus, cap, fmt } from "../ui.tsx";
+import { Chevron, Close, Flame, Macros, Plus, barra, cap, fmt, salir } from "../ui.tsx";
 
 type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
 
@@ -32,7 +32,7 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
               <circle className="arco" cx="62" cy="62" r="54" fill="none" stroke={resto < 0 ? "var(--warn)" : "var(--accent)"} strokeWidth="10" strokeLinecap={arco > 0 ? "round" : "butt"} strokeDasharray={`${arco} 339.3`} transform="rotate(-90 62 62)" />
             </svg>
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.04em" }}>{fmt(Math.abs(resto))}</span>
+              <span key={resto} className="cambia" style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.04em" }}>{fmt(Math.abs(resto))}</span>
               <span className="muted" style={{ fontSize: 11, fontWeight: 500 }}>{resto < 0 ? "kcal de más" : "kcal restantes"}</span>
             </div>
           </div>
@@ -46,7 +46,7 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
           {([["Proteína", t.p, meta.prot, "bg-p"], ["Carbs", t.c, meta.carbs, "bg-c"], ["Grasas", t.g, meta.grasas, "bg-g"]] as const).map(([l, v, m, bg]) => (
             <div key={l} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="label" style={{ fontWeight: 500 }}>{l}</span>
-              <div className="track"><div className={bg} style={{ width: `${m ? Math.min(100, (v / m) * 100) : 0}%` }} /></div>
+              <div className="track"><div className={bg} style={barra(v / m)} /></div>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(v)}<span className="muted" style={{ fontWeight: 500 }}> / {fmt(m)} g</span></span>
             </div>
           ))}
@@ -91,12 +91,12 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
                 <button className={`icon-btn ${es.length ? "" : "solid"}`} aria-label={`Agregar a ${m.label}`} onClick={() => onAdd(m.id)}><Plus /></button>
               </div>
               {abierto === m.id && es.map((e) => (
-                <div key={e.id} className="row aparece" style={{ paddingLeft: 28, borderBottom: 0, paddingTop: 0 }}>
+                <div key={e.id} className="row crece" style={{ paddingLeft: 28, borderBottom: 0, paddingTop: 0 }}>
                   <div className="grow">
                     <span style={{ fontSize: 14, fontWeight: 500 }} className="ellipsis">{cap(e.name)}</span>
                     <span className="sub">{fmt(e.grams)} g · {fmt(e.kcal)} kcal</span>
                   </div>
-                  <button className="icon-btn" aria-label={`Quitar ${e.name}`} onClick={() => onRemove(e.id)}><Close /></button>
+                  <button className="icon-btn" aria-label={`Quitar ${e.name}`} onClick={(ev) => salir(ev.currentTarget.closest(".row"), () => onRemove(e.id))}><Close /></button>
                 </div>
               ))}
             </div>

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MEALS, PRODUCTOS, RECETAS, type FoodRow, type MealId } from "../data/foods.ts";
 import type { Entrada } from "../lib/store.ts";
-import { Chevron, Close, Macros, Minus, Plus, Search, Sheet, cap, fmt, uid } from "../ui.tsx";
+import { Close, Macros, Minus, Opciones, Plus, Search, Sheet, barra, cap, fmt, salir, uid } from "../ui.tsx";
 
 type Fuente = "General" | "Producto" | "Receta" | "Mío";
 type Props = {
@@ -14,15 +14,9 @@ export const sinAcentos = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "
 export const porcionTxt = (r: FoodRow) => (r[5] ? `${r[5].cantidad} ${r[5].unidad} · ${fmt(r[5].gramos)} g` : "100 g");
 const mealLabel = (m: MealId) => MEALS.find((x) => x.id === m)!.label;
 
-function MealSelect({ id, meal, setMeal }: { id: string; meal: MealId; setMeal: (m: MealId) => void }) {
-  return (
-    <div className="box" style={{ height: 44, paddingRight: 10 }}>
-      <select id={id} value={meal} onChange={(e) => setMeal(e.target.value as MealId)}>
-        {MEALS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-      </select>
-      <Chevron />
-    </div>
-  );
+const COMIDAS = MEALS.map((m) => [m.id, m.label] as const);
+function MealSelect({ id, meal, setMeal, ancho }: { id: string; meal: MealId; setMeal: (m: MealId) => void; ancho?: boolean }) {
+  return <Opciones id={id} titulo="Agregar a" value={meal} options={COMIDAS} onChange={setMeal} style={{ height: 44, paddingRight: 10, width: ancho ? undefined : "auto" }} />;
 }
 
 export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumidas, meta, onAdd, onGuardar, onBorrar, onEditarReceta, onCompartir }: Props) {
@@ -35,8 +29,28 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
   const fuente = (n: string): Fuente => (n in mios ? "Mío" : RECETAS.has(n) || recetas.has(n) ? "Receta" : PRODUCTOS.has(n) ? "Producto" : "General");
   const nq = sinAcentos(q.trim());
   // los míos y tus recetas primero; un nombre propio igual a uno de la base lo reemplaza (como en la app anterior)
-  const nombres = [...new Set([...Object.keys(mios), ...recetas, ...Object.keys(foods)])]
-    .filter((n) => (filtro === "Todos" || fuente(n) === filtro) && sinAcentos(n).includes(nq));
+  const nombres = useMemo(() => [...new Set([...Object.keys(mios), ...recetas, ...Object.keys(foods)])]
+    .filter((n) => (filtro === "Todos" || fuente(n) === filtro) && sinAcentos(n).includes(nq)), [mios, recetas, foods, filtro, nq]);
+  // la lista no se vuelve a pintar al abrir una hoja: pintarla entera trababa la animación de entrada
+  const filas = useMemo(() => nombres.map((n) => {
+    const r = mios[n] ?? foods[n];
+    const k = (r[5]?.gramos ?? 100) / 100;
+    return (
+      // mantener presionado (o clic derecho / tecla de menú) abre Editar y Borrar
+      <div key={`${fuente(n)}:${n}`} data-n={n} className="row press" tabIndex={0} onContextMenu={(e) => { e.preventDefault(); setOpciones(n); }}>
+        <div className="grow" style={{ gap: 4 }}>
+          <span className="name ellipsis">{cap(n)}</span>
+          <span className="sub" style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="badge">{fuente(n)}</span>{porcionTxt(r)}</span>
+          <Macros p={r[1] * k} c={r[2] * k} g={r[3] * k} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.02em" }}>{fmt(r[0] * k)}</span>
+          <span className="sub" style={{ fontSize: 11 }}>kcal</span>
+        </div>
+        <button className="icon-btn" aria-label={`Agregar ${n}`} onClick={() => setSel(n)}><Plus /></button>
+      </div>
+    );
+  }), [nombres]);
 
   return (
     <main className="screen">
@@ -48,7 +62,7 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
         <button className="pill solid" onClick={() => setNuevo({ nombre: "", row: null, anterior: null })}><Plus />Nuevo</button>
       </header>
 
-      <div className="box" style={{ height: 48, color: "var(--muted)", gap: 10 }}>
+      <div className="box buscar">
         <Search />
         <label htmlFor="buscar" className="sr">Buscar alimento</label>
         <input id="buscar" type="search" placeholder="Buscar alimento, producto o receta" value={q} onChange={(e) => setQ(e.target.value)} style={{ fontSize: 15, fontWeight: 500 }} />
@@ -69,25 +83,7 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
 
       <div className="list">
         {nombres.length === 0 && <div className="row"><span className="sub">Sin resultados.</span></div>}
-        {nombres.map((n) => {
-          const r = mios[n] ?? foods[n];
-          const k = (r[5]?.gramos ?? 100) / 100;
-          return (
-            // mantener presionado (o clic derecho / tecla de menú) abre Editar y Borrar
-            <div key={n} className="row press" tabIndex={0} onContextMenu={(e) => { e.preventDefault(); setOpciones(n); }}>
-              <div className="grow" style={{ gap: 4 }}>
-                <span className="name ellipsis">{cap(n)}</span>
-                <span className="sub" style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="badge">{fuente(n)}</span>{porcionTxt(r)}</span>
-                <Macros p={r[1] * k} c={r[2] * k} g={r[3] * k} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.02em" }}>{fmt(r[0] * k)}</span>
-                <span className="sub" style={{ fontSize: 11 }}>kcal</span>
-              </div>
-              <button className="icon-btn" aria-label={`Agregar ${n}`} onClick={() => setSel(n)}><Plus /></button>
-            </div>
-          );
-        })}
+        {filas}
         {nq && !nombres.some((n) => sinAcentos(n) === nq) && (
           <button className="row" style={{ gap: 8, fontWeight: 600, fontSize: 14 }} onClick={() => setNuevo({ nombre: q.trim(), row: null, anterior: null })}><Plus />Registrar “{q.trim()}”</button>
         )}
@@ -110,12 +106,13 @@ export default function Alimentos({ foods, mios, recetas, meal, setMeal, consumi
             setOpciones(null);
           }}>Editar</button>
           <button className="secondary" onClick={() => { onCompartir(opciones); setOpciones(null); }}>Compartir</button>
-          <button className="secondary" style={{ color: "var(--warn)" }} onClick={async () => {
-            const aviso = opciones in mios && opciones in foods ? "Se borra tu versión y vuelve la original de la base."
-              : opciones in mios || recetas.has(opciones) ? "No se puede deshacer." : "Lo puedes restaurar en Configuración.";
-            if (!confirm(`¿Borrar "${opciones}"? ${aviso}`)) return;
-            await onBorrar(opciones);
+          <button className="secondary" style={{ color: "var(--warn)" }} onClick={() => {
+            const n = opciones;
+            const aviso = n in mios && n in foods ? "Se borra tu versión y vuelve la original de la base."
+              : n in mios || recetas.has(n) ? "No se puede deshacer." : "Lo puedes restaurar en Configuración.";
+            if (!confirm(`¿Borrar "${n}"? ${aviso}`)) return;
             setOpciones(null);
+            salir(document.querySelector(`[data-n="${CSS.escape(n)}"]`), () => onBorrar(n));
           }}>Borrar</button>
         </Sheet>
       )}
@@ -156,12 +153,12 @@ function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onCl
       </div>
 
       <div className="chips">
-        {atajos.map(([l, v]) => <button key={l} className="chip" aria-pressed={g === v} onClick={() => setGramos(String(v))}>{l}</button>)}
+        {atajos.map(([l, v]) => <button key={l} className="chip" aria-label={`Sumar ${l}`} onClick={() => paso(v)}>+ {l}</button>)}
       </div>
 
       <div className="field">
         <label htmlFor="meal-sheet" className="label">Agregar a</label>
-        <MealSelect id="meal-sheet" meal={meal} setMeal={setMeal} />
+        <MealSelect id="meal-sheet" meal={meal} setMeal={setMeal} ancho />
       </div>
 
       <div className="grid4">
@@ -173,9 +170,9 @@ function AgregarSheet({ name, row, fuente, meal, setMeal, consumidas, meta, onCl
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div className="kv"><span className="muted">Tu día después</span><b>{fmt(consumidas + e.kcal)} / {fmt(meta)} kcal</b></div>
-        <div className="track" style={{ height: 8, display: "flex" }}>
-          <span style={{ width: `${Math.min(100, (consumidas / meta) * 100)}%`, background: "var(--accent)" }} />
-          <span style={{ width: `${Math.min(100, (e.kcal / meta) * 100)}%`, background: "var(--accent)", opacity: 0.35 }} />
+        <div className="track" style={{ height: 8, display: "grid" }}>
+          <div style={{ ...barra((consumidas + e.kcal) / meta), gridArea: "1 / 1", background: "var(--accent)", opacity: 0.35 }} />
+          <div style={{ ...barra(consumidas / meta), gridArea: "1 / 1", background: "var(--accent)" }} />
         </div>
       </div>
 

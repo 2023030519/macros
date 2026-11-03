@@ -6,9 +6,9 @@ Fuente única del aspecto. Los valores viven en `src/styles.css` (`:root`); este
 
 **Visual.** Instrumento preciso y tranquilo: fondos neutros fríos donde el color solo aparece para datos (naranja, azul y amarillo de los macros, los del logo) y para un acento que eliges entre 8; Geist como única familia, porque sus cifras tabulares hacen que los números se lean como un medidor, con contraste fuerte de tamaño; espaciado con aire sobre base de 4 px (cómodo por defecto, compacto opcional); tarjetas planas sin borde, separadas del fondo por tono, radios 8/14/20/28 y sin sombras salvo la hoja inferior.
 
-**Interacción.** Rápido y seco con `cubic-bezier(0.2, 0, 0, 1)`: 120 ms al presionar (escala 0.96), 200 ms colapsables y pestañas, 280 ms entra la hoja y 160 ms sale; el anillo y las barras de macros se llenan en 600 ms (la única excepción). Táctil: presionar es el estado "hover". Prohibido: animaciones al hacer scroll, rebote o elástico, bucles infinitos, parallax, vidrio desenfocado, números que cuentan solos.
+**Interacción.** Rápido y seco con `cubic-bezier(0.2, 0, 0, 1)`: 120 ms al presionar (escala 0.96), 200 ms colapsables y pestañas, 280 ms entra la hoja y 160 ms sale; el anillo y las barras se llenan en 600 ms (la única excepción). Las hojas bajan al cerrarse por cualquier camino; la opción elegida de un segmento se desliza; las filas crecen al entrar y se encogen al salir; una cifra que cambia entra de abajo (no cuenta). Táctil: presionar es el estado "hover". Prohibido: animaciones al hacer scroll, rebote o elástico, bucles infinitos, parallax, vidrio desenfocado, números que cuentan solos.
 
-**Patrones permitidos.** Cifras tabulares; línea fina sobre la barra de pestañas y entre filas de listas; barras de progreso sobre pista completa (datos reales); alto animado solo en colapsables (`interpolate-size`, abre al instante donde no exista); el anillo como motivo.
+**Patrones permitidos.** Cifras tabulares; línea fina sobre la barra de pestañas y entre filas de listas; barras de progreso sobre pista completa (datos reales); alto animado solo en colapsables y en filas que entran o salen (`interpolate-size`, salta al instante donde no exista); listas de opciones en hoja propia, nunca `<select>` nativo; el anillo como motivo.
 
 ## Tokens
 

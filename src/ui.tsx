@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 export const fmt = (n: number) => Math.round(n).toLocaleString("es-MX");
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -9,6 +9,7 @@ export const Plus = () => <svg width="18" height="18" viewBox="0 0 24 24" stroke
 export const Minus = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2.2" {...svg}><path d="M5 12h14" /></svg>;
 export const Close = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2.2" {...svg}><path d="M6 6l12 12M18 6 6 18" /></svg>;
 export const Search = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2" {...svg}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>;
+export const Check = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2.4" {...svg}><path d="m5 12 5 5 9-10" /></svg>;
 export const Chevron = () => <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2.2" {...svg}><path d="m6 9 6 6 6-6" /></svg>;
 export const Flame = () => <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" {...svg} stroke="var(--p)"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1.2-3.6 2.4-4.6.3 1.6 1.2 2.6 2.1 2.6 0-3 .5-5.5.5-8z" /></svg>;
 
@@ -26,19 +27,37 @@ export function Macros({ p, c, g }: { p: number; c: number; g: number }) {
 let abiertos = 0;
 
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  // tocar fuera la baja con animación; los botones de adentro cierran al instante (ya hay un aviso)
-  const [cerrando, setCerrando] = useState(false);
+  const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     if (abiertos++ === 0) document.body.style.overflow = "hidden";
     return () => {
       if (--abiertos === 0) document.body.style.overflow = "";
     };
   }, []);
+  // Al cerrarse por cualquier camino, una copia inerte baja y se borra sola; así ningún botón tiene que esperar la animación.
+  useLayoutEffect(() => {
+    const hoja = ref.current!, scrim = hoja.previousElementSibling as HTMLElement;
+    return () => {
+      const top = hoja.scrollTop;
+      queueMicrotask(() => {
+        if (hoja.isConnected) return; // StrictMode desmonta de prueba en desarrollo
+        for (const el of [scrim, hoja]) {
+          const copia = el.cloneNode(true) as HTMLElement;
+          copia.classList.add("cerrando");
+          copia.inert = true;
+          copia.addEventListener("animationend", () => copia.remove());
+          document.body.append(copia);
+          copia.scrollTop = el === hoja ? top : 0;
+        }
+      });
+    };
+  }, []);
   return (
     <>
-      <div className={`scrim${cerrando ? " cerrando" : ""}`} aria-hidden="true" onClick={() => setCerrando(true)} />
-      <section className={`sheet${cerrando ? " cerrando" : ""}`} role="dialog" aria-modal="true" aria-label={title}
-        onAnimationEnd={(e) => cerrando && e.target === e.currentTarget && onClose()}>
+      <div className="scrim" aria-hidden="true" onClick={onClose} />
+      <section ref={ref} className="sheet" role="dialog" aria-modal="true" aria-label={title}
+        // el teclado se abre después de que la hoja sube; abrirlo a media animación la traba
+        onAnimationEnd={(e) => e.target === e.currentTarget && e.currentTarget.querySelector<HTMLElement>("[data-foco]")?.focus()}>
         <span className="grabber" aria-hidden="true" />
         {children}
       </section>
@@ -46,9 +65,59 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   );
 }
 
+// Reemplaza <select>: la lista nativa de Android no se puede estilizar; esta abre una hoja con las opciones.
+export function Opciones<T extends string>({ id, titulo, value, options, onChange, style }: {
+  id: string; titulo: string; value: T; options: readonly (readonly [T, string, string?])[]; onChange: (v: T) => void; style?: CSSProperties;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <>
+      <button id={id} type="button" className="box opc" aria-haspopup="dialog" style={style} onClick={() => setAbierto(true)}>
+        <span className="grow ellipsis">{options.find((o) => o[0] === value)?.[1]}</span><Chevron />
+      </button>
+      {abierto && (
+        <Sheet title={titulo} onClose={() => setAbierto(false)}>
+          <h2>{titulo}</h2>
+          <div className="list">
+            {options.map(([v, l, d]) => (
+              <button key={v} type="button" className="row" aria-pressed={v === value} onClick={() => { onChange(v); setAbierto(false); }}>
+                <span className="grow"><span className="name">{l}</span>{d && <span className="sub">{d}</span>}</span>
+                {v === value && <span style={{ display: "flex", color: "var(--accent)" }}><Check /></span>}
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
+    </>
+  );
+}
+
+// Barras de progreso: se llenan con transform (--f de 0 a 1), así animan al abrir y al cambiar.
+export const barra = (f: number) => ({ "--f": Math.min(1, Math.max(0, f)) || 0 }) as CSSProperties;
+
+// Llave estable por objeto para listas sin id (menú, ingredientes): con el índice animaría la fila equivocada.
+const llaves = new WeakMap<object, string>();
+export const llave = (o: object) => {
+  let k = llaves.get(o);
+  if (!k) llaves.set(o, (k = uid()));
+  return k;
+};
+
+// La fila se encoge (.sale) y luego se quita del estado. Si falla, vuelve a verse.
+export function salir(el: Element | null | undefined, fn: () => unknown) {
+  if (!el) return void fn();
+  el.classList.add("sale");
+  const f = (ev: Event) => {
+    if (ev.target !== el) return;
+    el.removeEventListener("animationend", f);
+    Promise.resolve(fn()).catch((err) => { el.classList.remove("sale"); throw err; });
+  };
+  el.addEventListener("animationend", f);
+}
+
 export function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
   return (
-    <div className="seg" role="group" aria-label={label}>
+    <div className="seg" role="group" aria-label={label} style={{ "--n": options.length, "--i": Math.max(0, options.findIndex((o) => o[0] === value)) } as CSSProperties}>
       {options.map(([v, l]) => (
         <button key={v} type="button" aria-pressed={v === value} onClick={() => onChange(v)}>{l}</button>
       ))}

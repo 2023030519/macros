@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FoodRow } from "../data/foods.ts";
 import { CATEGORIAS, sumar, type Receta } from "../lib/receta.ts";
-import { Close, Minus, Plus, Seg, cap, fmt } from "../ui.tsx";
+import { Close, Minus, Plus, Seg, cap, fmt, llave, salir } from "../ui.tsx";
 import Elegir from "./Elegir.tsx";
 
 const Libro = () => (
@@ -148,11 +148,11 @@ export function EditarReceta({ receta, foods, existe, onSave, onDelete, onCancel
         <span className="sub">Total {fmt(t.kcal)} kcal</span>
       </div>
       <div className="list">
-        {r.ingredientes.map((i, idx) => (
-          <div key={idx} className="row">
+        {r.ingredientes.map((i) => (
+          <div key={llave(i)} className="row crece">
             <div className="grow"><span className="name ellipsis">{cap(i.name)}</span><span className="sub">{fmt(i.grams)} g</span></div>
             <span style={{ fontSize: 14, fontWeight: 600 }}>{fmt(i.kcal)}</span>
-            <button className="icon-btn" aria-label={`Quitar ${i.name}`} onClick={() => setR({ ...r, ingredientes: r.ingredientes.filter((_, j) => j !== idx) })}><Close /></button>
+            <button className="icon-btn" aria-label={`Quitar ${i.name}`} onClick={(ev) => salir(ev.currentTarget.closest(".row"), () => setR((r) => ({ ...r, ingredientes: r.ingredientes.filter((x) => x !== i) })))}><Close /></button>
           </div>
         ))}
         <button className="row" style={{ justifyContent: "center", gap: 8, fontWeight: 600, fontSize: 14 }} onClick={() => setEligiendo(true)}><Plus />Agregar ingrediente</button>
@@ -161,7 +161,7 @@ export function EditarReceta({ receta, foods, existe, onSave, onDelete, onCancel
       {err && <p className="error" role="alert">{err}</p>}
       {receta && <button className="secondary" style={{ color: "var(--warn)" }} onClick={() => confirm(`¿Borrar la receta "${receta.nombre}"?`) && onDelete()}>Borrar receta</button>}
 
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "var(--bar)", backdropFilter: "blur(16px)", borderTop: "1px solid var(--line)", padding: "14px 20px calc(18px + env(safe-area-inset-bottom))" }}>
+      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "var(--surface)", borderTop: "1px solid var(--line)", padding: "14px 20px calc(18px + env(safe-area-inset-bottom))" }}>
         <div style={{ maxWidth: 440, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span className="sub">Por porción</span>

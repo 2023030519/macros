@@ -4,7 +4,7 @@ import type { plan } from "../lib/calc.ts";
 import { lunes, sumarDias } from "../lib/dias.ts";
 import type { MenuSemanal } from "../lib/menu.ts";
 import { sumar, type Item } from "../lib/receta.ts";
-import { Close, Plus, cap, fmt } from "../ui.tsx";
+import { Close, Plus, barra, cap, fmt, llave, salir } from "../ui.tsx";
 import Elegir from "./Elegir.tsx";
 
 const svg = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
@@ -65,7 +65,7 @@ export default function Menu({ dia, menu, meta, foods, onAgregar, onQuitar, onDu
           <span><b style={{ fontSize: 26, letterSpacing: "-0.03em" }}>{fmt(t.kcal)}</b> <span className="sub" style={{ fontSize: 13 }}>/ {fmt(meta.kcal_objetivo)} kcal planeadas</span></span>
           <span style={{ fontSize: 12, fontWeight: 600, color: libres < 0 ? "var(--warn)" : undefined }}>{libres < 0 ? `${fmt(-libres)} de más` : `${fmt(libres)} libres`}</span>
         </div>
-        <div className="track" style={{ height: 8 }}><div style={{ width: `${Math.min(100, (t.kcal / meta.kcal_objetivo) * 100)}%`, background: "var(--accent)" }} /></div>
+        <div className="track" style={{ height: 8 }}><div style={{ ...barra(t.kcal / meta.kcal_objetivo), background: "var(--accent)" }} /></div>
         <div className="macros" style={{ justifyContent: "space-between", fontSize: 12 }}>
           <span><i className="dot bg-p" />P {fmt(t.p)} / {fmt(meta.prot)} g</span>
           <span><i className="dot bg-c" />C {fmt(t.c)} / {fmt(meta.carbs)} g</span>
@@ -87,9 +87,9 @@ export default function Menu({ dia, menu, meta, foods, onAgregar, onQuitar, onDu
                 <button className={`icon-btn ${its.length ? "" : "solid"}`} aria-label={`Agregar a ${m.label}`} onClick={() => setAgregando(m.id)}><Plus /></button>
               </div>
               {its.map((it, i) => (
-                <div key={i} className="row" style={{ padding: "0 10px 8px 16px", borderBottom: 0 }}>
+                <div key={llave(it)} className="row crece" style={{ padding: "0 10px 8px 16px", borderBottom: 0 }}>
                   <div className="grow"><span className="name ellipsis">{cap(it.name)}</span><span className="sub">{fmt(it.grams)} g · {fmt(it.kcal)} kcal</span></div>
-                  <button className="icon-btn" aria-label={`Quitar ${it.name} de ${m.label}`} onClick={() => onQuitar(sel, m.id, i)}><Close /></button>
+                  <button className="icon-btn" aria-label={`Quitar ${it.name} de ${m.label}`} onClick={(ev) => salir(ev.currentTarget.closest(".row"), () => onQuitar(sel, m.id, i))}><Close /></button>
                 </div>
               ))}
             </div>

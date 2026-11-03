@@ -94,7 +94,7 @@ h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
 .dot { width: 6px; height: 6px; border-radius: var(--r-full); display: inline-block; }
 .bg-p { background: var(--p); } .bg-c { background: var(--c); } .bg-g { background: var(--g); }
 .track { height: 6px; border-radius: var(--r-full); background: var(--surface2); overflow: hidden; }
-.track > div { height: 100%; border-radius: var(--r-full); }
+.track > div { height: 100%; border-radius: var(--r-full); transform: scaleX(var(--f, 1)); transform-origin: left; transition: transform var(--d-ring) var(--ease); }
 .badge { height: 20px; padding: 0 7px; border-radius: var(--r-sm); background: var(--surface2); color: var(--text); display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
 
 .pill { height: 36px; padding: 0 var(--s3); border-radius: var(--r-full); border: 0; background: var(--surface); display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
@@ -115,18 +115,22 @@ button:disabled { opacity: 0.4; cursor: default; }
   transition: transform var(--d-press) var(--ease), opacity var(--d-press) var(--ease), background-color var(--d-press) var(--ease);
 }
 :is(.pill, .chip, .icon-btn, .primary, .secondary, .seg button, .tabs button, .sw, button.card):not(:disabled):active { transform: scale(0.96); opacity: 0.85; }
-button.row, .press, .fold > summary { transition: background-color var(--d-press) var(--ease); }
-:is(button.row, .press, .fold > summary):active { background-color: var(--surface2); }
+button.row, .press { transition: background-color var(--d-press) var(--ease); }
+:is(button.row, .press):active { background-color: var(--surface2); }
 
-.seg { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: var(--r-md); background: var(--surface2); }
-.seg button { height: 40px; border-radius: var(--r-sm); border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; }
+.seg { position: relative; display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: var(--r-md); background: var(--surface2); }
+.seg button { position: relative; height: 40px; border-radius: var(--r-sm); border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
+.seg button[aria-pressed="true"] { color: var(--text); font-weight: 600; }
+/* La pastilla blanca se desliza a la opción elegida (ui.tsx pone --n opciones y --i elegida). */
+.seg::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px - (var(--n) - 1) * 4px) / var(--n)); border-radius: var(--r-sm); background: var(--surface); transform: translateX(calc(var(--i) * (100% + 4px))); transition: transform var(--d-ui) var(--ease); }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .box { height: 52px; box-sizing: border-box; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; padding: 0 12px; gap: 4px; }
 .box:focus-within { border: 2px solid var(--text); padding: 0 11px; }
-.box input, .box select { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font-size: 18px; font-weight: 700; }
-.box select { font-size: 15px; font-weight: 600; appearance: none; }
+.box input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font-size: 18px; font-weight: 700; }
+.box.opc { width: 100%; gap: 8px; text-align: left; font-size: 15px; font-weight: 600; }
+.box.buscar { height: 52px; padding: 0 16px; gap: 12px; color: var(--muted); }
+.box.buscar:focus-within { padding: 0 15px; }
 .box .unit { font-size: 13px; color: var(--muted); font-weight: 500; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -153,9 +157,10 @@ button.row, .press, .fold > summary { transition: background-color var(--d-press
 @keyframes aparecer { from { opacity: 0; } }
 @keyframes desaparecer { to { opacity: 0; } }
 .scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 10; animation: aparecer var(--d-sheet) var(--ease); }
-.sheet { overscroll-behavior: contain; position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; max-height: 92vh; overflow-y: auto; box-sizing: border-box; background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--shadow-sheet); padding: 10px var(--s5) calc(var(--s6) + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--s4); max-width: 480px; margin: 0 auto; animation: subir var(--d-sheet) var(--ease); }
+.sheet { overscroll-behavior: contain; position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; max-height: 92vh; overflow-y: auto; box-sizing: border-box; background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--shadow-sheet); padding: 10px var(--s5) calc(var(--s6) + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--s4); max-width: 480px; margin: 0 auto; animation: subir var(--d-sheet) var(--ease); will-change: transform; }
 .cerrando.scrim { animation: desaparecer var(--d-exit) var(--ease-in) forwards; }
 .cerrando.sheet { animation: bajar var(--d-exit) var(--ease-in) forwards; }
+.cerrando { pointer-events: none; }
 .grabber { align-self: center; width: 40px; height: 5px; border-radius: var(--r-full); background: var(--line); }
 .sheet h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 
@@ -181,7 +186,6 @@ button.row { width: 100%; min-height: 52px; background: none; border: 0; border-
 
 /* Anillo y barras de Hoy: se llenan al abrir y al registrar. */
 .arco { transition: stroke-dasharray var(--d-ring) var(--ease), stroke var(--d-ui) var(--ease); }
-.track > div { transform-origin: left; transition: transform var(--d-ring) var(--ease); }
 @starting-style {
   .arco { stroke-dasharray: 0 339.3; }
   .track > div { transform: scaleX(0); }
@@ -198,3 +202,11 @@ button.row { width: 100%; min-height: 52px; background: none; border: 0; border-
   *, *::before, *::after, ::details-content { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 .aparece { animation: aparecer var(--d-ui) var(--ease); }
+/* Filas que entran y salen de una lista (registrar, quitar). Alto animado como en los colapsables. */
+@keyframes crecer { from { opacity: 0; height: 0; padding-top: 0; padding-bottom: 0; } }
+@keyframes encoger { to { opacity: 0; height: 0; padding-top: 0; padding-bottom: 0; transform: translateX(-12px); } }
+.crece { animation: crecer var(--d-ui) var(--ease); overflow: clip; }
+.sale { animation: encoger var(--d-exit) var(--ease-in) forwards; overflow: clip; pointer-events: none; }
+/* Una cifra que cambia (objetivo, calorías restantes) entra de abajo; no cuenta. */
+@keyframes cambio { from { opacity: 0; transform: translateY(6px); } }
+.cambia { display: inline-block; animation: cambio var(--d-ui) var(--ease); }

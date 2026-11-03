@@ -36,10 +36,10 @@ export default function Elegir({ title, foods: base, boton, onPick, onClose, onN
 
       {sel === null ? (
         <>
-          <div className="box" style={{ height: 48, color: "var(--muted)", gap: 10 }}>
+          <div className="box buscar">
             <Search />
             <label htmlFor="elegir-q" className="sr">Buscar alimento</label>
-            <input id="elegir-q" type="search" autoFocus placeholder="Buscar alimento o receta" value={q} onChange={(e) => setQ(e.target.value)} style={{ fontSize: 15, fontWeight: 500 }} />
+            <input id="elegir-q" type="search" data-foco placeholder="Buscar alimento o receta" value={q} onChange={(e) => setQ(e.target.value)} style={{ fontSize: 15, fontWeight: 500 }} />
           </div>
           <div className="list" style={{ minHeight: 0 }}>
             {nombres.length === 0 && <div className="row"><span className="sub">Sin resultados.</span></div>}
@@ -64,7 +64,7 @@ export default function Elegir({ title, foods: base, boton, onPick, onClose, onN
           </div>
           <div className="chips">
             {([["100 g", 100], ...(foods[sel][5] ? [[porcionTxt(foods[sel]), foods[sel][5]!.gramos]] : [])] as [string, number][]).map(([l, v]) => (
-              <button key={l} className="chip" aria-pressed={g === v} onClick={() => setGramos(String(v))}>{l}</button>
+              <button key={l} className="chip" aria-label={`Sumar ${l}`} onClick={() => setGramos(String((g > 0 ? g : 0) + v))}>+ {l}</button>
             ))}
           </div>
           {prev && <div className="kv"><span className="muted">{fmt(prev.kcal)} kcal</span><Macros {...prev} /></div>}

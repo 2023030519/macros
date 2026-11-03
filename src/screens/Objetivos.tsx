@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AJUSTE_KCAL, plan, type Actividad, type Objetivo, type Perfil, type Sexo } from "../lib/calc.ts";
-import { Chevron, Seg, fmt } from "../ui.tsx";
+import { Chevron, Opciones, Seg, barra, fmt } from "../ui.tsx";
 
 const ACTIVIDADES: [Actividad, string, string][] = [
   ["sedentario", "Sedentario", "Poco o nada de ejercicio"],
@@ -36,8 +36,8 @@ export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onC
       <section className="card" aria-label="Requerimiento diario">
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span className="label">Requerimiento diario</span>
-          <span><b style={{ fontSize: 40, fontWeight: 700, letterSpacing: "-0.04em" }}>{fmt(r.kcal_objetivo)}</b> <span className="muted">kcal</span></span>
-          <span className="sub">Mantenimiento {fmt(r.tdee)} · {ajusteTxt(perfil.objetivo)} kcal</span>
+          <span><b key={r.kcal_objetivo} className="cambia" style={{ fontSize: 40, fontWeight: 700, letterSpacing: "-0.04em" }}>{fmt(r.kcal_objetivo)}</b> <span className="muted">kcal</span></span>
+          <span key={perfil.objetivo} className="sub aparece">Mantenimiento {fmt(r.tdee)} · {ajusteTxt(perfil.objetivo)} kcal</span>
         </div>
         <Seg label="Objetivo" value={perfil.objetivo} options={OBJETIVOS} onChange={onObjetivo} />
         <details className="fold">
@@ -58,7 +58,7 @@ export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onC
         {([["Proteína", r.pctProt, r.prot, "bg-p"], ["Carbs", r.pctCarbs, r.carbs, "bg-c"], ["Grasas", r.pctGrasas, r.grasas, "bg-g"]] as const).map(([l, pct, g, bg]) => (
           <div key={l} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div className="kv"><span className="muted">{l} · {pct}%</span><b>{fmt(g)} g</b></div>
-            <div className="track"><div className={bg} style={{ width: `${Math.min(100, pct)}%` }} /></div>
+            <div className="track"><div className={bg} style={barra(pct / 100)} /></div>
           </div>
         ))}
       </section>
@@ -102,12 +102,7 @@ export function TusDatos({ perfil, onSave, onCancel, simular }: { perfil: Perfil
 
       <div className="field">
         <label htmlFor="d-act" className="label">Nivel de actividad</label>
-        <div className="box" style={{ height: 56 }}>
-          <select id="d-act" value={actividad} onChange={(e) => setActividad(e.target.value as Actividad)}>
-            {ACTIVIDADES.map(([id, l]) => <option key={id} value={id}>{l}</option>)}
-          </select>
-          <Chevron />
-        </div>
+        <Opciones id="d-act" titulo="Nivel de actividad" value={actividad} options={ACTIVIDADES} onChange={setActividad} style={{ height: 56 }} />
         <span className="sub">{ACTIVIDADES.find((a) => a[0] === actividad)![2]}</span>
       </div>
 
@@ -117,7 +112,7 @@ export function TusDatos({ perfil, onSave, onCancel, simular }: { perfil: Perfil
 
       <section className="result" aria-label="Resultado" aria-live="polite">
         <span className="dim" style={{ fontSize: 13, fontWeight: 600 }}>Tu requerimiento</span>
-        <span><span className="big">{r ? fmt(r.kcal_objetivo) : "—"}</span> <span className="dim">kcal/día</span></span>
+        <span><span key={r?.kcal_objetivo} className="big cambia">{r ? fmt(r.kcal_objetivo) : "—"}</span> <span className="dim">kcal/día</span></span>
         <div className="grid3">
           <div><span className="dim">Basal</span><b>{r ? fmt(r.tmb) : "—"}</b></div>
           <div><span className="dim">Mantenimiento</span><b>{r ? fmt(r.tdee) : "—"}</b></div>
