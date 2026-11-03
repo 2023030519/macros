@@ -125,6 +125,28 @@ export function Seg<T extends string>({ label, value, options, onChange }: { lab
   );
 }
 
+// Colapsables <details class="fold">: el alto se anima con JS; en el WebView del cel interpolate-size no animó.
+export function animarColapsables() {
+  document.addEventListener("click", (e) => {
+    const s = (e.target as Element).closest(".fold > summary");
+    if (!s) return;
+    e.preventDefault();
+    const d = s.parentElement as HTMLDetailsElement;
+    const cerrar = d.open && !d.classList.contains("cerrando");
+    const desde = d.offsetHeight;
+    d.getAnimations().forEach((a) => a.cancel());
+    d.open = !cerrar;
+    const hasta = d.offsetHeight;
+    d.open = true; // al cerrar, el contenido se queda hasta el final y el alto lo recorta
+    d.classList.toggle("cerrando", cerrar);
+    const ms = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 200;
+    d.animate({ height: [`${desde}px`, `${hasta}px`] }, { duration: ms, easing: "cubic-bezier(0.2, 0, 0, 1)" }).onfinish = () => {
+      if (cerrar) d.open = false;
+      d.classList.remove("cerrando");
+    };
+  });
+}
+
 // Preguntas antes de una acción (reemplazan confirm/alert nativos): await preguntar({...}) da true si acepta.
 type Pregunta = { titulo: string; texto?: string; si: string; peligro?: boolean; no?: string | false };
 type Pendiente = Pregunta & { resolve: (ok: boolean) => void };

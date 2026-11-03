@@ -6,6 +6,8 @@ import "@fontsource/geist-sans/600.css";
 import "@fontsource/geist-sans/700.css";
 import "./styles.css";
 import App from "./App.tsx";
-import { Preguntas, Toast } from "./ui.tsx";
+import { Preguntas, Toast, animarColapsables } from "./ui.tsx";
+
+animarColapsables();
 
 createRoot(document.getElementById("root")!).render(<StrictMode><App /><Toast /><Preguntas /></StrictMode>);
