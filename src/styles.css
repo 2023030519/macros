@@ -111,10 +111,10 @@ h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
 button:disabled { opacity: 0.4; cursor: default; }
 
 /* Presionar: la respuesta táctil (no hay hover). Botones compactos se encogen; filas anchas se oscurecen. */
-.pill, .chip, .icon-btn, .primary, .secondary, .seg button, .tabs button, .sw {
+.pill, .chip, .icon-btn, .primary, .secondary, .seg button, .tabs button, .sw, button.card {
   transition: transform var(--d-press) var(--ease), opacity var(--d-press) var(--ease), background-color var(--d-press) var(--ease);
 }
-:is(.pill, .chip, .icon-btn, .primary, .secondary, .seg button, .tabs button, .sw):not(:disabled):active { transform: scale(0.96); opacity: 0.85; }
+:is(.pill, .chip, .icon-btn, .primary, .secondary, .seg button, .tabs button, .sw, button.card):not(:disabled):active { transform: scale(0.96); opacity: 0.85; }
 button.row, .press, .fold > summary { transition: background-color var(--d-press) var(--ease); }
 :is(button.row, .press, .fold > summary):active { background-color: var(--surface2); }
 

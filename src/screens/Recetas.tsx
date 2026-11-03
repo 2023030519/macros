@@ -22,7 +22,7 @@ async function reducir(file: File) {
 function BarraMacros({ p, c, g }: { p: number; c: number; g: number }) {
   const t = p * 4 + c * 4 + g * 9 || 1;
   return (
-    <div role="img" aria-label={`Proteína ${fmt(p)} g, carbohidratos ${fmt(c)} g, grasas ${fmt(g)} g`} style={{ display: "flex", height: 6, borderRadius: 99, overflow: "hidden", gap: 2 }}>
+    <div role="img" aria-label={`Proteína ${fmt(p)} g, carbohidratos ${fmt(c)} g, grasas ${fmt(g)} g`} style={{ display: "flex", height: 6, borderRadius: "var(--r-full)", overflow: "hidden", gap: 2 }}>
       <span className="bg-p" style={{ flex: `0 0 calc(${(p * 4 * 100) / t}% - 2px)` }} />
       <span className="bg-c" style={{ flex: `0 0 calc(${(c * 4 * 100) / t}% - 2px)` }} />
       <span className="bg-g" style={{ flex: `0 0 calc(${(g * 9 * 100) / t}% - 2px)` }} />
@@ -56,10 +56,10 @@ export default function Recetas({ recetas, onEditar }: { recetas: Record<string,
           const t = sumar(r.ingredientes);
           const pp = { kcal: t.kcal / r.porciones, p: t.p / r.porciones, c: t.c / r.porciones, g: t.g / r.porciones };
           return (
-            <button key={r.nombre} className="card" style={{ borderRadius: 20, padding: 8, gap: 10, textAlign: "left" }} onClick={() => onEditar(r.nombre)}>
-              <div style={{ height: 84, width: "100%", borderRadius: 14, background: "var(--surface2)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>
+            <button key={r.nombre} className="card" style={{ borderRadius: "var(--r-lg)", padding: 8, gap: 10, textAlign: "left" }} onClick={() => onEditar(r.nombre)}>
+              <div style={{ height: 84, width: "100%", borderRadius: "var(--r-md)", background: "var(--surface2)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>
                 {r.foto ? <img className="foto" src={r.foto} alt="" /> : <Libro />}
-                {r.tiempo > 0 && <span className="badge" style={{ position: "absolute", left: 8, bottom: 8, height: 22, borderRadius: 999, background: "var(--surface)", padding: "0 8px" }}>{r.tiempo} min</span>}
+                {r.tiempo > 0 && <span className="badge" style={{ position: "absolute", left: 8, bottom: 8, height: 22, borderRadius: "var(--r-full)", background: "var(--surface)", padding: "0 8px" }}>{r.tiempo} min</span>}
               </div>
               <div style={{ padding: "0 6px 6px", display: "flex", flexDirection: "column", gap: 6, width: "100%", boxSizing: "border-box" }}>
                 <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25, height: 35, overflow: "hidden" }}>{cap(r.nombre)}</span>
@@ -107,7 +107,7 @@ export function EditarReceta({ receta, foods, existe, onSave, onDelete, onCancel
       </header>
 
       <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-        <label className="press" style={{ width: 72, height: 72, flexShrink: 0, borderRadius: 18, background: "var(--surface2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, fontSize: 11, fontWeight: 600, color: "var(--muted)", cursor: "pointer", overflow: "hidden" }}>
+        <label className="press" style={{ width: 72, height: 72, flexShrink: 0, borderRadius: "var(--r-lg)", background: "var(--surface2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, fontSize: 11, fontWeight: 600, color: "var(--muted)", cursor: "pointer", overflow: "hidden" }}>
           {r.foto ? <img className="foto" src={r.foto} alt="Foto de la receta" /> : <><Libro />Foto</>}
           <input type="file" accept="image/*" className="sr" aria-label={r.foto ? "Cambiar foto" : "Agregar foto"}
             onChange={async (e) => {

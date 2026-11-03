@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo de MacrOS (assets_Rayblox/iconos/macrOS/2/anillo-icono-tienda-1024.svg); los 100 del SVG caben en la zona segura de 66 dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="163.64" android:viewportHeight="163.64">
+    <group android:translateX="31.82" android:translateY="31.82">
+        <path android:strokeColor="#F26A2E" android:strokeWidth="11" android:strokeLineCap="round" android:fillColor="#00000000"
+            android:pathData="M54.69,23.41 A27,27 0 0,1 76.95,48.30"/>
+        <path android:strokeColor="#3D66F5" android:strokeWidth="11" android:strokeLineCap="round" android:fillColor="#00000000"
+            android:pathData="M70.68,67.36 A27,27 0 0,1 38.00,74.19"/>
+        <path android:strokeColor="#E8B53A" android:strokeWidth="11" android:strokeLineCap="round" android:fillColor="#00000000"
+            android:pathData="M24.63,59.23 A27,27 0 0,1 35.06,27.51"/>
+    </group>
+</vector>
