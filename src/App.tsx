@@ -19,7 +19,7 @@ import { HOY_DEFAULT, normalizarHoy, type PrefHoy } from "./lib/hoy.ts";
 import { COMIDAS_DEFAULT, mostrar, nombreTiempo, normalizarComidas, type PrefComidas } from "./lib/comidas.ts";
 import Objetivos, { TusDatos } from "./screens/Objetivos.tsx";
 import Recetas, { EditarReceta } from "./screens/Recetas.tsx";
-import { avisar, preguntar, uid } from "./ui.tsx";
+import { avisar, preguntar, uid, useAtras } from "./ui.tsx";
 
 type Tab = "hoy" | "alimentos" | "recetas" | "menu" | "objetivos";
 const ico = { fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
@@ -46,6 +46,10 @@ export default function App() {
   const [simulando, setSimulando] = useState(false);
   const [config, setConfig] = useState(false);
   const [verUpd, setVerUpd] = useState(false);
+  useAtras(editando, () => setEditando(false));
+  useAtras(simulando, () => setSimulando(false));
+  useAtras(config, () => setConfig(false));
+  useAtras(verUpd, () => setVerUpd(false));
   const [upd, setUpd] = useState<EstadoUpd>({ t: "buscando" });
   // tocar la pestaña en la que ya estás la recarga desde cero
   const [refresco, setRefresco] = useState(0);
@@ -70,6 +74,7 @@ export default function App() {
   const [ocultos, setOcultos] = useState<string[]>([]);
   // undefined = no se edita; null = receta nueva
   const [receta, setReceta] = useState<string | null | undefined>(undefined);
+  useAtras(receta !== undefined, () => setReceta(undefined));
 
   async function cargar() {
     const d = hoy();

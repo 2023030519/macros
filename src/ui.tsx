@@ -23,11 +23,38 @@ export function Macros({ p, c, g }: { p: number; c: number; g: number }) {
   );
 }
 
+// Atrás de Android (MainActivity.java regresa en el historial del WebView): lo abierto encima empuja una entrada
+// y regresar cierra solo lo de más arriba. Cerrado con un botón, se quita su entrada sin cerrar lo de abajo.
+const pila: (() => void)[] = [];
+let ignorar = 0;
+window.addEventListener("popstate", () => {
+  if (ignorar) ignorar--;
+  else pila.pop()?.();
+});
+export function useAtras(abierto: boolean, cerrar: () => void) {
+  const ref = useRef(cerrar);
+  ref.current = cerrar;
+  useEffect(() => {
+    if (!abierto) return;
+    const f = () => ref.current();
+    pila.push(f);
+    history.pushState(null, "");
+    return () => {
+      const i = pila.indexOf(f);
+      if (i < 0) return; // ya lo cerró atrás
+      pila.splice(i, 1);
+      ignorar++;
+      history.back();
+    };
+  }, [abierto]);
+}
+
 // Hay modales encima de modales (Elegir → Registrar), así que se cuentan para soltar el scroll al cerrar el último.
 let abiertos = 0;
 
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
+  useAtras(true, onClose);
   useEffect(() => {
     if (abiertos++ === 0) document.body.style.overflow = "hidden";
     return () => {
