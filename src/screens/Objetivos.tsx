@@ -26,8 +26,8 @@ export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onC
         </div>
         <div style={{ flexDirection: "row", gap: 6 }}>
           <button className="pill" onClick={onEditar}>Editar datos</button>
-          <button className="icon-btn" style={{ background: "var(--surface)", width: 36, height: 36, borderRadius: 999, position: "relative" }} aria-label={hayNueva ? "Configuración, hay una actualización" : "Configuración"} onClick={onConfig} >
-            {hayNueva && <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, borderRadius: 99, background: "var(--accent)", border: "2px solid var(--bg)" }} />}
+          <button className="icon-btn" style={{ background: "var(--surface)", borderRadius: "var(--r-full)", position: "relative" }} aria-label={hayNueva ? "Configuración, hay una actualización" : "Configuración"} onClick={onConfig} >
+            {hayNueva && <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 10, height: 10, borderRadius: "var(--r-full)", background: "var(--accent)", border: "2px solid var(--bg)" }} />}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
           </button>
         </div>
@@ -40,16 +40,21 @@ export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onC
           <span className="sub">Mantenimiento {fmt(r.tdee)} · {ajusteTxt(perfil.objetivo)} kcal</span>
         </div>
         <Seg label="Objetivo" value={perfil.objetivo} options={OBJETIVOS} onChange={onObjetivo} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <details className="fold">
+          <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 44 }}>
+            <span className="label">Cómo se calcula</span><span className="chev" aria-hidden="true"><Chevron /></span>
+          </summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 6 }}>
           <div className="kv"><span className="muted">Actividad</span><b>{act[1]} · {act[2].split(" de ")[0]}</b></div>
           <div className="hr" />
           <div className="kv"><span className="muted">Datos</span><b>{perfil.peso} kg · {perfil.altura} cm · {perfil.edad} años</b></div>
           <div className="hr" />
           <div className="kv"><span className="muted">Basal (Mifflin-St Jeor)</span><b>{fmt(r.tmb)} kcal</b></div>
-        </div>
+          </div>
+        </details>
       </section>
 
-      <section className="card" aria-label="Macros" style={{ gap: 14 }}>
+      <section className="card" aria-label="Macros">
         {([["Proteína", r.pctProt, r.prot, "bg-p"], ["Carbs", r.pctCarbs, r.carbs, "bg-c"], ["Grasas", r.pctGrasas, r.grasas, "bg-g"]] as const).map(([l, pct, g, bg]) => (
           <div key={l} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div className="kv"><span className="muted">{l} · {pct}%</span><b>{fmt(g)} g</b></div>
@@ -83,9 +88,9 @@ export function TusDatos({ perfil, onSave, onCancel, simular }: { perfil: Perfil
   );
 
   return (
-    <main className="screen" style={{ paddingBottom: 40, gap: 18 }}>
+    <main className="screen" style={{ paddingBottom: 40 }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 44 }}>
-        {onCancel ? <button className="pill" style={{ border: 0, background: "none" }} onClick={onCancel}>{simular ? "Cerrar" : "Cancelar"}</button> : <span />}
+        {onCancel ? <button className="pill" style={{ background: "none" }} onClick={onCancel}>{simular ? "Cerrar" : "Cancelar"}</button> : <span />}
         <h2>{simular ? "Simulador" : "Tus datos"}</h2>
         {simular || !onSave ? <span style={{ width: 70 }} /> : <button className="pill solid" disabled={!ok} style={{ opacity: ok ? 1 : 0.4 }} onClick={() => onSave(p)}>Guardar</button>}
       </header>
