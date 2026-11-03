@@ -29,7 +29,7 @@ export default function Actualizaciones({ upd, onBuscar, onCerrar }: { upd: Esta
         const instalada = !esNueva && !esMasNueva(__VERSION__, r.tag_name);
         return (
           // colapsadas; las nuevas abiertas para ver qué trae la actualización
-          <details key={r.tag_name} className="card upd" open={esNueva} style={{ padding: 0, gap: 0, borderRadius: 20 }}>
+          <details key={r.tag_name} className="card fold" open={esNueva} style={{ padding: 0, gap: 0, borderRadius: "var(--r-lg)" }}>
             <summary style={{ display: "flex", alignItems: "center", gap: 8, padding: 16, minHeight: 24, cursor: "pointer" }}>
               <b style={{ fontSize: 15 }}>{r.tag_name}</b>
               <span className="sub">{new Date(r.published_at).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>

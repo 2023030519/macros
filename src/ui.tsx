@@ -26,6 +26,8 @@ export function Macros({ p, c, g }: { p: number; c: number; g: number }) {
 let abiertos = 0;
 
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  // tocar fuera la baja con animación; los botones de adentro cierran al instante (ya hay un aviso)
+  const [cerrando, setCerrando] = useState(false);
   useEffect(() => {
     if (abiertos++ === 0) document.body.style.overflow = "hidden";
     return () => {
@@ -34,8 +36,9 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   }, []);
   return (
     <>
-      <div className="scrim" aria-hidden="true" onClick={onClose} />
-      <section className="sheet" role="dialog" aria-modal="true" aria-label={title}>
+      <div className={`scrim${cerrando ? " cerrando" : ""}`} aria-hidden="true" onClick={() => setCerrando(true)} />
+      <section className={`sheet${cerrando ? " cerrando" : ""}`} role="dialog" aria-modal="true" aria-label={title}
+        onAnimationEnd={(e) => cerrando && e.target === e.currentTarget && onClose()}>
         <span className="grabber" aria-hidden="true" />
         {children}
       </section>

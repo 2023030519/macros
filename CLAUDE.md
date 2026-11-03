@@ -4,7 +4,7 @@ App personal de macros para Android (Capacitor 6 + React + Vite). Sin cuentas: t
 
 - `npm run dev` · `npm test` · `npm run build`
 - Lógica de calorías: `src/lib/calc.ts` (viene de la calculadora anterior; no cambiar fórmulas sin pedirlo).
-- Diseño de referencia (solo aspecto): canvas "MacrOS" en claude.ai.
+- Diseño: `MASTER.md` (tokens en `src/styles.css`). El canvas "MacrOS" de claude.ai quedó como referencia anterior.
 
 ## Publicar una versión
 1. Sube `"version"` en `package.json` (0.3.0 → 0.3.1).
