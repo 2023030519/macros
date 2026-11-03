@@ -22,6 +22,14 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
   const r = racha(dias, dia);
   const semana = [6, 5, 4, 3, 2, 1, 0].map((i) => sumarDias(dia, -i));
 
+  // al cerrar (o cambiar de comida) las filas abiertas se encogen primero; abrir no espera nada
+  function alternar(m: MealId, lista: Element | null) {
+    const sig = abierto === m ? null : m;
+    const filas = [...(lista?.querySelectorAll(".meal > .row.crece") ?? [])];
+    filas.forEach((f) => f.classList.add("sale"));
+    salir(filas[0], () => setAbierto(sig));
+  }
+
   const bloques: Record<Tarjeta, JSX.Element> = {
     calorias: (
       <section className="card" aria-label="Calorías del día">
@@ -79,7 +87,7 @@ export default function Hoy({ dia, log, dias, meta, pref, onAdd, onRemove }: Pro
           return (
             <div key={m.id} className="meal">
               <div className="row" style={{ borderBottom: 0 }}>
-                <button className="grow" style={{ background: "none", border: 0, padding: 0, textAlign: "left" }} aria-expanded={es.length ? abierto === m.id : undefined} onClick={() => es.length && setAbierto(abierto === m.id ? null : m.id)}>
+                <button className="grow" style={{ background: "none", border: 0, padding: 0, textAlign: "left" }} aria-expanded={es.length ? abierto === m.id : undefined} onClick={(ev) => es.length && alternar(m.id, ev.currentTarget.closest(".list"))}>
                   <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     <span className="name">{m.label}</span>
                     {es.length > 0 && <span className="sub">{fmt(s.kcal)} kcal</span>}
