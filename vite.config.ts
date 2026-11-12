@@ -4,4 +4,5 @@ import react from "@vitejs/plugin-react";
 
 const { version } = JSON.parse(readFileSync("package.json", "utf8"));
 
-export default defineConfig({ plugins: [react()], define: { __VERSION__: JSON.stringify(version) } });
+// base relativa: el .exe abre dist/index.html desde file://
+export default defineConfig({ base: "./", plugins: [react()],define: { __VERSION__: JSON.stringify(version) } });

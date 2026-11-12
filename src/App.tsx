@@ -8,8 +8,10 @@ import { compartir, nombreArchivo } from "./lib/compartir.ts";
 import { exportar, leer } from "./lib/migrar.ts";
 import { comoAlimento, sumar, type Item, type Receta } from "./lib/receta.ts";
 import { diasRegistrados, load, remove, save, type Entrada } from "./lib/store.ts";
+import { sincronizar } from "./lib/nube.ts";
 import Alimentos from "./screens/Alimentos.tsx";
 import Hoy from "./screens/Hoy.tsx";
+import Escribir from "./screens/Escribir.tsx";
 import Menu from "./screens/Menu.tsx";
 import Actualizaciones from "./screens/Actualizaciones.tsx";
 import { normalizarMenu, type MenuSemanal } from "./lib/menu.ts";
@@ -46,6 +48,7 @@ export default function App() {
   const [simulando, setSimulando] = useState(false);
   const [config, setConfig] = useState(false);
   const [verUpd, setVerUpd] = useState(false);
+  const [escribiendo, setEscribiendo] = useState(false);
   // modo dev (tocar la versión en Actualizaciones): muestra Base compartida en Configuración
   const [dev, setDev] = useState(false);
   useAtras(editando, () => setEditando(false));
@@ -97,12 +100,23 @@ export default function App() {
   }
 
   useEffect(() => {
-    cargar();
+    // vinculado con otro dispositivo: si bajó cambios, vuelve a cargar lo de este
+    const sync = () => sincronizar().then((n) => { if (n > 0) return cargar(); }).catch(() => {});
+    cargar().then(sync);
     // al volver a la app, si ya cambió el día, carga el registro del día nuevo
     // (no siempre: volver del selector de archivos o de compartir pisaría lo que se está guardando)
-    const onVis = () => document.visibilityState === "visible" && hoy() !== diaRef.current && cargar();
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      if (hoy() !== diaRef.current) cargar();
+      sync();
+    };
     document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
+    // en la compu la ventana se queda abierta: al volver a ella también se sincroniza
+    window.addEventListener("focus", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -316,7 +330,7 @@ export default function App() {
         comidas={comidas} onComidas={async (c) => { await save("comidas", c); setComidas(c); }}
         onExportar={() => compartirPaquete(null)} onImportar={async (t) => { const r = await importar(t); if (r) avisar("Importado"); return r; }}
         token={token} onToken={async (t) => { await save("token", t); setToken(t); }} mios={Object.keys(mios).length} onSubirMios={subirMios}
-        onRestaurar={() => guardarOcultos([])} />
+        onRestaurar={() => guardarOcultos([])} onVinculado={cargar} />
     );
   }
 
@@ -360,7 +374,13 @@ export default function App() {
         <Hoy dia={dia} log={log} dias={dias} meta={meta} pref={prefHoy} comidas={comidas}
           onOrden={async (orden) => { const h = { ...prefHoy, orden }; await save("hoy", h); setPrefHoy(h); }}
           onAdd={(m) => { setMeal(m); irA("alimentos"); }}
-          onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }} />
+          onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }}
+          onEscribir={() => setEscribiendo(true)} />
+      )}
+      {escribiendo && (
+        <Escribir foods={todo} recetas={Object.keys(recetas)} comidas={comidas} log={log} objetivo={{ kcal: meta.kcal_objetivo, p: meta.prot }} porDefecto={meal}
+          onAgregar={async (es) => { await guardarLog([...log, ...es]); avisar(es.length === 1 ? `Agregado a ${nombreTiempo(comidas, es[0].meal)}` : "Agregado a Hoy"); }}
+          onNuevo={(n, r) => guardarAlimento(n, r, null)} onClose={() => setEscribiendo(false)} />
       )}
       {tab === "alimentos" && (
         <Alimentos foods={foods} mios={mios} recetas={new Set(Object.keys(recetas))} meal={meal} setMeal={setMeal} comidas={comidas} consumidas={sumar(log).kcal} meta={meta.kcal_objetivo}

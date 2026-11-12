@@ -21,10 +21,11 @@ export async function buscarReleases(): Promise<EstadoUpd> {
   }
 }
 
-// El APK de la versión más nueva, si es más nueva que la instalada.
+// El instalador de la versión más nueva (APK en el cel, .exe en escritorio), si es más nueva que la instalada.
+const EXT = typeof navigator !== "undefined" && navigator.userAgent.includes("Electron") ? ".exe" : ".apk";
 export function apkNuevo(e: EstadoUpd, actual: string) {
   const r = e.t === "listo" ? e.releases[0] : undefined;
-  return r && esMasNueva(r.tag_name, actual) ? { version: r.tag_name, url: r.assets.find((a) => a.name.endsWith(".apk"))?.browser_download_url } : null;
+  return r && esMasNueva(r.tag_name, actual) ? { version: r.tag_name, url: r.assets.find((a) => a.name.endsWith(EXT))?.browser_download_url } : null;
 }
 
 // Modo dev, como en Android: tocar la versión 15 veces seguidas (sin pausas de más de 1 s); a las 10 se avisa.

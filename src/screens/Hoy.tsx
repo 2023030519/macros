@@ -8,14 +8,14 @@ import type { Entrada } from "../lib/store.ts";
 import { reubicar, type PrefHoy, type Tarjeta } from "../lib/hoy.ts";
 import { Chevron, Close, Flame, Macros, Plus, barra, cap, fmt, salir } from "../ui.tsx";
 
-type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; comidas: PrefComidas; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void };
+type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; comidas: PrefComidas; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void; onEscribir: () => void };
 
 const fecha = (dia: string) => {
   const [y, m, d] = dia.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
-export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAdd, onRemove }: Props) {
+export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAdd, onRemove, onEscribir }: Props) {
   const tiempos = mostrar(comidas, log.map((e) => e.meal));
   const [abierto, setAbierto] = useState<MealId | null>(null);
   // orden recién soltado, mientras se guarda
@@ -211,7 +211,13 @@ export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAd
           <span className="kicker">{cap(fecha(dia).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" }).replace(",", ""))}</span>
           <h1>Hoy</h1>
         </div>
-        <span className="pill" aria-label={`Racha de ${r} días`}><Flame />{r}</span>
+        <div style={{ flexDirection: "row", gap: 8 }}>
+          <button className="pill" onClick={onEscribir}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /></svg>
+            Escribir
+          </button>
+          <span className="pill" aria-label={`Racha de ${r} días`}><Flame />{r}</span>
+        </div>
       </header>
 
       {vis.map((k) => <div key={k} className="tarjeta" data-tarjeta={k}>{bloques[k]}</div>)}

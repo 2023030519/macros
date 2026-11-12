@@ -15,8 +15,14 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      nueva: ${{ steps.v.outputs.nueva }}
+      version: ${{ steps.v.outputs.version }}
     env:
       GH_TOKEN: ${{ github.token }}
+      # Vincular dispositivos; sin ellos la app sale sin esa sección
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v5
 
@@ -71,3 +77,22 @@ jobs:
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk macros.apk
           gh release create "v${{ steps.v.outputs.version }}" macros.apk --title "MacrOS ${{ steps.v.outputs.version }}" --notes-file notas.md
+
+  # Versión de escritorio: el instalador de Windows va al mismo release; la app de PC lo busca ahí.
+  escritorio:
+    needs: release
+    if: needs.release.outputs.nueva == 'si'
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run exe
+      - run: gh release upload "v${{ needs.release.outputs.version }}" "release/MacrOS-${{ needs.release.outputs.version }}-setup.exe"

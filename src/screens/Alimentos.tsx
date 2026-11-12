@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { PRODUCTOS, RECETAS, type FoodRow, type MealId } from "../data/foods.ts";
 import { mostrar, nombreTiempo, type PrefComidas } from "../lib/comidas.ts";
-import type { Entrada } from "../lib/store.ts";
-import { Close, Macros, Minus, Opciones, Plus, Search, Sheet, barra, cap, fmt, preguntar, salir, uid } from "../ui.tsx";
+import { leerEtiqueta } from "../lib/etiqueta.ts";
+import { load, type Entrada } from "../lib/store.ts";
+import { Camara, Close, Galeria, Macros, Minus, Opciones, Plus, SIN_LLAVE, Search, Sheet, avisar, barra, cap, fmt, preguntar, salir, tactil, uid } from "../ui.tsx";
 
 type Fuente = "General" | "Producto" | "Receta" | "Mío";
 type Props = {
@@ -191,6 +192,38 @@ export function AlimentoSheet({ inicial, existe, onClose, onSave }: { inicial: I
   const num = (s: string) => (s.trim() === "" ? 0 : Number(s.replace(",", ".")));
   const titulo = inicial.anterior ? "Editar alimento" : "Nuevo alimento";
 
+  // Leer etiqueta: necesita la llave de Gemini de Configuración; sin ella, los botones dicen dónde ponerla
+  const [llave, setLlave] = useState("");
+  const [foto, setFoto] = useState<string | null>(null); // miniatura mientras lee
+  const [errFoto, setErrFoto] = useState("");
+  const [llenado, setLlenado] = useState(0); // cambia la key de los campos para que vuelvan a entrar
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => { load("gemini", "").then(setLlave); }, []);
+
+  function abrir(camara: boolean) {
+    if (!llave) return setErrFoto(SIN_LLAVE);
+    const i = input.current!;
+    if (camara) i.setAttribute("capture", "environment");
+    else i.removeAttribute("capture");
+    i.click();
+  }
+  async function leer(f: File) {
+    const url = URL.createObjectURL(f);
+    setFoto(url);
+    setErrFoto("");
+    try {
+      const l = await leerEtiqueta(llave, f);
+      setV((v) => ({ nombre: v.nombre.trim() || l.nombre, kcal: num0(l.kcal), p: num0(l.p), c: num0(l.c), g: num0(l.g), f: num0(l.f), porcion: l.porcion ? num0(l.porcion) : v.porcion }));
+      setLlenado((n) => n + 1);
+      avisar("Listo. Revisa los valores antes de guardar");
+    } catch (e) {
+      setErrFoto((e as Error).message);
+    } finally {
+      URL.revokeObjectURL(url);
+      setFoto(null);
+    }
+  }
+
   async function guardar() {
     const nombre = v.nombre.trim().toLowerCase();
     const [kcal, p, c, g, f, porcion] = [v.kcal, v.p, v.c, v.g, v.f, v.porcion].map(num);
@@ -203,10 +236,12 @@ export function AlimentoSheet({ inicial, existe, onClose, onSave }: { inicial: I
     onSave(nombre, [kcal, p, c, g, f, porc]);
   }
 
-  const campo = (k: keyof typeof v, label: string, unit: string) => (
+  // al llenarse desde la foto, cada cifra entra de abajo, un campo tras otro
+  const entra = (i: number) => (llenado ? { className: "llena", style: { "--i": i } as CSSProperties } : {});
+  const campo = (k: keyof typeof v, label: string, unit: string, i: number) => (
     <div className="field">
       <label htmlFor={`n-${k}`} className="label">{label}</label>
-      <div className="box"><input id={`n-${k}`} inputMode="decimal" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /><span className="unit">{unit}</span></div>
+      <div className="box"><input id={`n-${k}`} inputMode="decimal" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} key={llenado} {...entra(i)} /><span className="unit">{unit}</span></div>
     </div>
   );
 
@@ -216,14 +251,32 @@ export function AlimentoSheet({ inicial, existe, onClose, onSave }: { inicial: I
         <h2>{titulo}</h2>
         <button className="icon-btn soft" aria-label="Cerrar" onClick={onClose}><Close /></button>
       </div>
-      <div className="field">
-        <label htmlFor="n-nombre" className="label">Nombre</label>
-        <div className="box"><input id="n-nombre" value={v.nombre} onChange={(e) => setV({ ...v, nombre: e.target.value })} style={{ fontSize: 16, fontWeight: 600 }} /></div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--s2)" }}>
+          <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) leer(f); }} />
+          {foto ? (
+            <div className="estado" role="status">
+              <img src={foto} alt="" />
+              <span className="grow"><b>Leyendo etiqueta…</b><span className="sub">Unos segundos</span></span>
+              <span className="spin" aria-hidden="true" />
+            </div>
+          ) : (
+            <div className="leer" style={tactil ? undefined : { gridTemplateColumns: "1fr" }}>
+              {tactil && <button type="button" className="secondary" onClick={() => abrir(true)}><Camara />Tomar foto</button>}
+              <button type="button" className="secondary" onClick={() => abrir(false)}><Galeria />{tactil ? "Elegir foto" : "Elegir foto de la etiqueta"}</button>
+            </div>
+          )}
+          {errFoto && <p className="error" role="alert">{errFoto}</p>}
       </div>
-      <span className="label">Valores por 100 g</span>
-      <div className="grid2">{campo("kcal", "Calorías", "kcal")}{campo("p", "Proteína", "g")}{campo("c", "Carbohidratos", "g")}{campo("g", "Grasas", "g")}{campo("f", "Fibra", "g")}{campo("porcion", "1 porción pesa", "g")}</div>
+      <div className={foto ? "leyendo" : undefined} style={{ display: "flex", flexDirection: "column", gap: "var(--s4)" }}>
+        <div className="field">
+          <label htmlFor="n-nombre" className="label">Nombre</label>
+          <div className="box"><input id="n-nombre" value={v.nombre} onChange={(e) => setV({ ...v, nombre: e.target.value })} style={{ fontSize: 16, fontWeight: 600 }} /></div>
+        </div>
+        <span className="label">Valores por 100 g</span>
+        <div className="grid2">{campo("kcal", "Calorías", "kcal", 0)}{campo("p", "Proteína", "g", 1)}{campo("c", "Carbohidratos", "g", 2)}{campo("g", "Grasas", "g", 3)}{campo("f", "Fibra", "g", 4)}{campo("porcion", "1 porción pesa", "g", 5)}</div>
+      </div>
       {err && <p className="error" role="alert">{err}</p>}
-      <button className="primary" onClick={guardar}>Guardar</button>
+      <button className="primary" disabled={!!foto} onClick={guardar}>Guardar</button>
     </Sheet>
   );
 }

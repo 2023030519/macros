@@ -3,6 +3,9 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 export const fmt = (n: number) => Math.round(n).toLocaleString("es-MX");
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+// cel = táctil; en la compu "Tomar foto" abriría el mismo selector de archivos que "Elegir foto"
+export const tactil = matchMedia("(pointer: coarse)").matches;
+export const SIN_LLAVE = "Para leer fotos pon tu llave de Gemini en Configuración → Leer etiquetas. Se guarda en cada dispositivo por separado.";
 
 const svg = { fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 export const Plus = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2" {...svg}><path d="M12 5v14M5 12h14" /></svg>;
@@ -11,7 +14,9 @@ export const Close = () => <svg width="18" height="18" viewBox="0 0 24 24" strok
 export const Search = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2" {...svg}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>;
 export const Check = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2.4" {...svg}><path d="m5 12 5 5 9-10" /></svg>;
 export const Chevron = () => <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2.2" {...svg}><path d="m6 9 6 6 6-6" /></svg>;
-export const Flame = () => <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" {...svg} stroke="var(--p)"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1.2-3.6 2.4-4.6.3 1.6 1.2 2.6 2.1 2.6 0-3 .5-5.5.5-8z" /></svg>;
+export const Camara = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2" {...svg}><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>;
+export const Galeria = () => <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2" {...svg}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m4 16 5-5 4 4 2-2 5 5" /></svg>;
+export const Flame =() => <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="2" {...svg} stroke="var(--p)"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1.2-3.6 2.4-4.6.3 1.6 1.2 2.6 2.1 2.6 0-3 .5-5.5.5-8z" /></svg>;
 
 export function Macros({ p, c, g }: { p: number; c: number; g: number }) {
   return (
@@ -31,6 +36,8 @@ window.addEventListener("popstate", () => {
   if (ignorar) ignorar--;
   else pila.pop()?.();
 });
+// con teclado (compu), Escape hace lo mismo que atrás
+window.addEventListener("keydown", (e) => { if (e.key === "Escape" && pila.length) history.back(); });
 export function useAtras(abierto: boolean, cerrar: () => void) {
   const ref = useRef(cerrar);
   ref.current = cerrar;

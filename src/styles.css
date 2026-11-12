@@ -198,8 +198,22 @@ button.row { width: 100%; min-height: 52px; background: none; border: 0; border-
 .toast { position: fixed; left: 0; right: 0; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 30; display: flex; justify-content: center; pointer-events: none; padding: 0 16px; }
 .toast span { background: var(--text); color: var(--inv); padding: 10px 16px; border-radius: var(--r-full); font-size: 14px; font-weight: 600; animation: entrar var(--d-ui) var(--ease); --desde: 0; }
 
+/* Leer etiqueta (Nuevo alimento): mientras Gemini lee, miniatura + indicador; al llenar, cada cifra entra de abajo */
+.leer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.leer .secondary { height: 44px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.estado { min-height: 44px; display: flex; align-items: center; gap: var(--s3); padding: 6px 12px 6px 6px; border-radius: var(--r-md); background: var(--surface2); }
+.estado img { width: 32px; height: 32px; border-radius: var(--r-sm); object-fit: cover; flex-shrink: 0; }
+.estado b { font-size: 14px; }
+/* el único bucle de la app: solo existe mientras espera la respuesta */
+.spin { width: 18px; height: 18px; box-sizing: border-box; border-radius: var(--r-full); border: 2px solid var(--line); border-top-color: var(--text); flex-shrink: 0; animation: girar 700ms linear infinite; }
+@keyframes girar { to { transform: rotate(1turn); } }
+.leyendo .box { opacity: 0.4; transition: opacity var(--d-ui) var(--ease); }
+.llena { animation: llenar var(--d-ui) var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); }
+@keyframes llenar { from { opacity: 0; transform: translateY(8px); } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after, ::details-content { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .spin { animation: none; border-right-color: var(--text); } /* a 0.01 ms por vuelta temblaría */
 }
 .aparece { animation: aparecer var(--d-ui) var(--ease); }
 /* Filas que entran y salen de una lista (registrar, quitar). Alto animado como en los colapsables. */
@@ -217,3 +231,48 @@ button.row { width: 100%; min-height: 52px; background: none; border: 0; border-
 /* Nombre editable en una lista (tiempos de comida): parece texto, la línea punteada avisa que se puede tocar. */
 .renombrar { flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; background: transparent; padding: 6px 0; outline: none; }
 .renombrar:focus { border-bottom: 2px solid var(--text); padding-bottom: 5px; }
+
+/* Escribir: lo tuyo en burbuja a la derecha; la respuesta de la app sin burbuja, en un bloque con línea fina. */
+.chat { display: flex; flex-direction: column; gap: var(--s3); }
+.yo { align-self: flex-end; max-width: 85%; margin: 0; padding: var(--s2) var(--s3); border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg); background: var(--surface2); font-size: 15px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.resp { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; display: flex; flex-direction: column; }
+.resp > p { margin: 0; padding: var(--s3) var(--s4); font-size: 14px; line-height: 1.45; }
+.resp .grupo { display: flex; flex-direction: column; border-bottom: 1px solid var(--line); }
+.resp .grupo > .label { padding: var(--s3) var(--s4) 0; }
+.resp .grupo .row:last-child { border-bottom: 0; }
+.resp .pie { padding: var(--s3); display: flex; flex-direction: column; gap: var(--s3); }
+.resp .pie .primary { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.escribir { position: sticky; bottom: 0; display: flex; gap: var(--s2); padding-top: var(--s2); background: var(--surface); }
+.escribir .box { flex: 1; }
+.escribir input { font-size: 16px; font-weight: 500; }
+.escribir .icon-btn { height: 52px; width: 52px; }
+.escribir .icon-btn.foto { width: 44px; background: var(--surface2); }
+.foto-msg { display: block; width: 160px; height: auto; max-height: 200px; object-fit: cover; padding: 0; }
+
+/* Escritorio (ventana ancha): pestañas como barra lateral, hojas como ventanas centradas, Hoy en dos columnas. */
+@media (min-width: 900px) {
+  #root:has(> .tabs) { padding-left: 232px; }
+  .tabs { top: 0; right: auto; width: 232px; padding: var(--s6) var(--s3); border-top: 0; border-right: 1px solid var(--line); grid-auto-flow: row; align-content: start; gap: 4px; }
+  .tabs::before { content: "MacrOS"; padding: 0 14px var(--s5); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
+  .tabs button { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 44px; padding: 0 14px; border-radius: var(--r-md); font-size: 15px; }
+  .tabs button[aria-current="page"] { background: var(--surface2); }
+  .screen { max-width: 760px; padding: var(--s8) var(--s8) var(--s8); }
+  .toast { bottom: var(--s8); }
+  #root:has(> .tabs) .toast { left: 232px; }
+
+  .sheet { top: 0; bottom: 0; margin: auto; height: fit-content; width: min(520px, 100vw - 48px); max-height: 86vh; border-radius: var(--r-xl); padding-bottom: var(--s6); animation-name: modal; }
+  .cerrando.sheet { animation-name: desaparecer; }
+  .grabber { display: none; }
+
+  .screen:has(> .tarjeta) { max-width: 1080px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); grid-template-rows: auto auto auto 1fr; align-items: start; column-gap: var(--s6); }
+  .screen > .head { grid-column: 1 / -1; }
+  .screen > .tarjeta { grid-column: 1; }
+  /* la columna derecha es la de comidas; la fila 1fr absorbe su alto para que la izquierda no se separe */
+  .screen > .tarjeta[data-tarjeta="comidas"] { grid-column: 2; grid-row: 2 / -1; }
+  .screen > .grid2:has(> button.card) { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+@keyframes modal { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+/* Con mouse sí hay hover. */
+@media (hover: hover) {
+  :is(button.row, .press, .tabs button, .chip):not([aria-pressed="true"]):hover { background-color: var(--surface2); }
+}

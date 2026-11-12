@@ -2,6 +2,13 @@
 
 Cada versión necesita su sección aquí: es lo que se ve en Configuración → Actualizaciones.
 
+## 0.7.0
+- Escribir (botón en Hoy): escribe lo que comiste, como “desayuné 2 huevos y 2 tortillas”, y se separa en alimentos, cantidades y tiempos de comida para agregarlo de un toque. Si un nombre se parece a varios, eliges cuál; lo que no está en tu base se avisa.
+- Pregunta “¿qué ceno?” en Escribir y te propone de tus recetas con la porción que le toca a esa comida según lo que te falta del día.
+- Leer etiquetas: en Nuevo alimento o en Escribir, manda la foto de la tabla nutrimental y se llenan los valores. Necesita tu llave gratis de Gemini en Configuración → Leer etiquetas.
+- MacrOS para la compu (Windows): el instalador viene en cada versión, junto al del cel.
+- Vincular dispositivos: entra con la misma cuenta en el cel y en la compu y tus datos se mantienen iguales.
+
 ## 0.6.0
 - Diseño nuevo: más limpio, con ícono y pantalla de inicio con el logo.
 - Más movimiento: las hojas suben y bajan, los segmentos se deslizan, las barras y el anillo se llenan, lo que agregas o quitas entra y sale con animación.

@@ -1,8 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { agregarTiempo, type PrefComidas } from "../lib/comidas.ts";
 import { mover, type PrefHoy, type Tarjeta } from "../lib/hoy.ts";
+import { cuenta, entrar, hayNube, salir, sincronizar } from "../lib/nube.ts";
+import { load, save } from "../lib/store.ts";
 import { apkNuevo, type EstadoUpd } from "../lib/version.ts";
-import { Chevron, Seg } from "../ui.tsx";
+import { Chevron, Seg, avisar } from "../ui.tsx";
 
 export type Tema = "sistema" | "claro" | "oscuro";
 export type Color = "neutro" | "azul" | "morado" | "rosa" | "verde" | "rojo" | "turquesa" | "tierra";
@@ -36,13 +38,92 @@ function Seccion({ titulo, resumen, abierta, children }: { titulo: string; resum
   );
 }
 
-export default function Configuracion({ tema, onTema, color, onColor, texto, onTexto, densidad, onDensidad, hoy, onHoy, comidas, onComidas, dev, onSalirDev, ocultos, onRestaurar, onExportar, onImportar, token, onToken, mios, onSubirMios, upd, onActualizaciones, onCerrar }: {
+// Cel y compu con los mismos datos: entras con la misma cuenta de Supabase en los dos (src/lib/nube.ts).
+function Vincular({ onCambio }: { onCambio: () => void }) {
+  const [cuentaActual, setCuenta] = useState<string | null | undefined>(undefined);
+  const [correo, setCorreo] = useState("");
+  const [clave, setClave] = useState("");
+  const [aviso, setAviso] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  useEffect(() => { cuenta().then(setCuenta); }, []);
+  if (!hayNube || cuentaActual === undefined) return null;
+  const hacer = async (fn: () => Promise<string>) => {
+    setOcupado(true);
+    setAviso("");
+    try { setAviso(await fn()); onCambio(); } catch (e) { setAviso((e as Error).message); }
+    setOcupado(false);
+  };
+  return (
+    <Seccion titulo="Vincular dispositivos" resumen={cuentaActual ? `Vinculado · ${cuentaActual}` : "Los mismos datos en el cel y en la compu"}>
+      <span className="sub">Entra con la misma cuenta en el cel y en la compu: tu perfil, lo que registras, tus alimentos, recetas y menú se mantienen iguales en los dos. La apariencia y las llaves se quedan en cada uno.</span>
+      {cuentaActual ? (
+        <div className="list" style={{ background: "var(--surface2)" }}>
+          <div className="row">
+            <div className="grow"><span className="name">Sincronizar ahora</span><span className="sub">También pasa sola al abrir y al volver a la app</span></div>
+            <button className="pill solid" disabled={ocupado} onClick={() => hacer(async () => { const n = await sincronizar(); return n ? `Listo: ${n} cambios del otro dispositivo.` : "Ya estaba al día."; })}>Sincronizar</button>
+          </div>
+          <div className="row">
+            <div className="grow"><span className="name">Cerrar sesión</span><span className="sub">Tus datos se quedan aquí, pero dejan de sincronizarse</span></div>
+            <button className="pill" style={{ background: "var(--surface)" }} disabled={ocupado} onClick={() => hacer(async () => { await salir(); setCuenta(null); return "Sesión cerrada."; })}>Salir</button>
+          </div>
+        </div>
+      ) : (
+        <form style={{ display: "flex", flexDirection: "column", gap: 8 }} onSubmit={(e) => {
+          e.preventDefault();
+          hacer(async () => { await entrar(correo.trim(), clave); setCuenta(correo.trim()); setClave(""); return "Vinculado. Tus datos ya están en este dispositivo."; });
+        }}>
+          <div className="box" style={{ height: 44 }}>
+            <label htmlFor="correo" className="sr">Correo</label>
+            <input id="correo" type="email" autoComplete="email" placeholder="Correo" value={correo} onChange={(e) => setCorreo(e.target.value)} style={{ fontSize: 14, fontWeight: 500 }} />
+          </div>
+          <div className="box" style={{ height: 44 }}>
+            <label htmlFor="clave" className="sr">Contraseña</label>
+            <input id="clave" type="password" autoComplete="current-password" placeholder="Contraseña" value={clave} onChange={(e) => setClave(e.target.value)} style={{ fontSize: 14, fontWeight: 500 }} />
+          </div>
+          <button className="pill solid" style={{ height: 44, justifyContent: "center" }} disabled={ocupado || !correo.trim() || !clave}>{ocupado ? "Vinculando…" : "Entrar"}</button>
+        </form>
+      )}
+      {aviso && <span className="sub" role="status">{aviso}</span>}
+    </Seccion>
+  );
+}
+
+// La llave de Gemini vive solo en este cel; la usa "Nuevo alimento" para leer etiquetas (src/lib/etiqueta.ts).
+function LeerEtiquetas() {
+  const [llave, setLlave] = useState("");
+  const [nueva, setNueva] = useState("");
+  useEffect(() => { load("gemini", "").then(setLlave); }, []);
+  const guardar = async (k: string) => { await save("gemini", k); setLlave(k); setNueva(""); avisar(k ? "Llave guardada" : "Llave quitada"); };
+  return (
+    <Seccion titulo="Leer etiquetas" resumen={llave ? "Activado · llena un alimento con una foto" : "Llena un alimento con una foto de su etiqueta"}>
+      <span className="sub">Con una llave gratis de Google AI Studio (aistudio.google.com/apikey), en “Nuevo alimento” o en Escribir puedes mandar la foto de la tabla nutrimental y se llenan los valores. La llave se queda solo en este dispositivo: en el cel y en la compu se pega por separado.</span>
+      {llave ? (
+        <div className="list" style={{ background: "var(--surface2)" }}>
+          <div className="row">
+            <div className="grow"><span className="name">Llave guardada</span><span className="sub">Solo en este dispositivo</span></div>
+            <button className="pill" style={{ background: "var(--surface)" }} onClick={() => guardar("")}>Quitar</button>
+          </div>
+        </div>
+      ) : (
+        <form style={{ display: "flex", gap: 8 }} onSubmit={(e) => { e.preventDefault(); if (nueva.trim()) guardar(nueva.trim()); }}>
+          <div className="box" style={{ flex: 1, height: 44 }}>
+            <label htmlFor="gemini" className="sr">Llave de Gemini</label>
+            <input id="gemini" type="password" autoComplete="off" placeholder="Pega tu llave" value={nueva} onChange={(e) => setNueva(e.target.value)} style={{ fontSize: 14, fontWeight: 500 }} />
+          </div>
+          <button className="pill solid" style={{ height: 44 }} disabled={!nueva.trim()}>Guardar</button>
+        </form>
+      )}
+    </Seccion>
+  );
+}
+
+export default function Configuracion({ tema, onTema, color, onColor, texto, onTexto, densidad, onDensidad, hoy, onHoy, comidas, onComidas, dev, onSalirDev, ocultos, onRestaurar, onExportar, onImportar, token, onToken, mios, onSubirMios, upd, onActualizaciones, onCerrar, onVinculado }: {
   tema: Tema; onTema: (t: Tema) => void; color: Color; onColor: (c: Color) => void;
   texto: Texto; onTexto: (t: Texto) => void; densidad: Densidad; onDensidad: (d: Densidad) => void; hoy: PrefHoy; onHoy: (h: PrefHoy) => void; comidas: PrefComidas; onComidas: (c: PrefComidas) => void; dev: boolean; onSalirDev: () => void;
   ocultos: number; onRestaurar: () => void;
   onExportar: () => Promise<void>; onImportar: (texto: string) => Promise<string | null>;
   token: string; onToken: (t: string) => Promise<void>; mios: number; onSubirMios: () => Promise<string>;
-  upd: EstadoUpd; onActualizaciones: () => void; onCerrar: () => void;
+  upd: EstadoUpd; onActualizaciones: () => void; onCerrar: () => void; onVinculado: () => void;
 }) {
   const [aviso, setAviso] = useState("");
   const [nuevoToken, setNuevoToken] = useState("");
@@ -150,6 +231,10 @@ export default function Configuracion({ tema, onTema, color, onColor, texto, onT
         </div>
         {aviso && <span className="sub" role="status">{aviso}</span>}
       </Seccion>
+
+      <Vincular onCambio={onVinculado} />
+
+      <LeerEtiquetas />
 
       {dev && <Seccion titulo="Base compartida" resumen={token ? "Modo dev · eres editor" : "Modo dev"}>
         <span className="sub">
