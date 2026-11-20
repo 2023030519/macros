@@ -1,8 +1,8 @@
 # MacrOS · sistema de diseño
 
-Fuente única del aspecto. Los valores viven en `src/styles.css` (`:root`); este archivo dice qué son y por qué. Vista previa aprobada: https://claude.ai/artifact/HwNgSGEQymCBpqzKycKF5e
+Fuente única del aspecto. Los valores viven en `src/styles.css` (`:root`); este archivo dice qué son y por qué. Si algo cambia, cambia primero aquí. Vista previa aprobada: https://claude.ai/artifact/HwNgSGEQymCBpqzKycKF5e
 
-## Tesis (aprobadas 2026-11-03)
+## Tesis (aprobadas el 2026-11-03)
 
 **Visual.** Instrumento preciso y tranquilo: fondos neutros fríos donde el color solo aparece para datos (naranja, azul y amarillo de los macros, los del logo) y para un acento que eliges entre 8; Geist como única familia, porque sus cifras tabulares hacen que los números se lean como un medidor, con contraste fuerte de tamaño; espaciado con aire sobre base de 4 px (cómodo por defecto, compacto opcional); tarjetas planas sin borde, separadas del fondo por tono, radios 8/14/20/28 y sin sombras salvo la hoja inferior.
 

@@ -2,7 +2,7 @@ import { Preferences } from "@capacitor/preferences";
 import { createClient } from "@supabase/supabase-js";
 import { sincronizable, soloAqui } from "./sync.ts";
 
-// Cel y compu vinculados: cada clave de Preferences es una fila de la tabla "datos" en Supabase (supabase/datos.sql).
+// Cel y compu vinculados: cada clave de Preferences es una fila de la tabla "datos" en Supabase (supabase/migrations/aplicadas/datos.sql).
 // Se sube al guardar; se baja al abrir y al volver a la app. Si los dos cambian lo mismo, gana el último.
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
