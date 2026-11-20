@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MealId } from "../data/foods.ts";
 import { mostrar, type PrefComidas } from "../lib/comidas.ts";
-import { kcalPasos, type Perfil, type plan } from "../lib/calc.ts";
+import { kcalCaminando, kmDePasos, type Perfil, type plan } from "../lib/calc.ts";
 import { racha, sumarDias } from "../lib/dias.ts";
 import { sumar } from "../lib/receta.ts";
 import type { Entrada } from "../lib/store.ts";
 import { reubicar, type PrefHoy, type Tarjeta } from "../lib/hoy.ts";
 import { Chevron, Close, Flame, Macros, Plus, barra, cap, fmt, salir } from "../ui.tsx";
 
-type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; perfil: Perfil; pasos: number; pref: PrefHoy; comidas: PrefComidas; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void; onEscribir: () => void; onPasos: (n: number) => void };
+type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; perfil: Perfil; pasos: number; km: number; pref: PrefHoy; comidas: PrefComidas; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void; onEscribir: () => void; onPasos: (n: number) => void; onKm: (n: number) => void };
 
 const fecha = (dia: string) => {
   const [y, m, d] = dia.split("-").map(Number);
@@ -16,35 +16,48 @@ const fecha = (dia: string) => {
 };
 
 const PASOS_MAX = 100_000;
+const KM_MAX = 100;
 
-// Pasos del día escritos a mano (los del reloj o la app de salud). Se guardan al salir del campo; las kcal se ven mientras escribes.
-function Pasos({ perfil, pasos, onPasos }: { perfil: Perfil; pasos: number; onPasos: (n: number) => void }) {
-  const [txt, setTxt] = useState(pasos ? String(pasos) : "");
-  const n = Number(txt.replace(/[\s,.]/g, "")); // "8,500" o "8 500" son 8500
-  const ok = Number.isInteger(n) && n >= 0 && n <= PASOS_MAX;
-  const listo = () => {
-    if (!ok) return setTxt(pasos ? String(pasos) : "");
-    if (n !== pasos) onPasos(n);
-  };
-  const quemadas = kcalPasos(ok ? n : pasos, perfil.peso, perfil.altura);
+// Pasos y km del día escritos a mano (los del reloj o la app de salud). Se guardan al salir de cada campo; las kcal se ven mientras escribes.
+// Con km se usan tal cual; sin km se estiman con los pasos y la estatura.
+function Pasos({ perfil, pasos, km, onPasos, onKm }: { perfil: Perfil; pasos: number; km: number; onPasos: (n: number) => void; onKm: (n: number) => void }) {
+  const [tp, setTp] = useState(pasos ? String(pasos) : "");
+  const [tk, setTk] = useState(km ? String(km) : "");
+  const np = Number(tp.replace(/[\s,.]/g, "")); // "8,500" o "8 500" son 8500
+  const okP = Number.isInteger(np) && np >= 0 && np <= PASOS_MAX;
+  const nk = Math.round(Number(tk.replace(",", ".")) * 100) / 100; // "6,4" o "6.4"
+  const okK = Number.isFinite(nk) && nk >= 0 && nk <= KM_MAX;
+  const p = okP ? np : pasos, k = okK ? nk : km;
+  const quemadas = kcalCaminando(k || kmDePasos(p, perfil.altura), perfil.peso);
+
+  const campo = (id: string, label: string, txt: string, set: (s: string) => void, ok: boolean, listo: () => void, placeholder: string, modo: "numeric" | "decimal") => (
+    <div className="field">
+      <label htmlFor={id} className="label">{label}</label>
+      <div className="box"><input id={id} inputMode={modo} placeholder={placeholder} value={txt} aria-invalid={!ok} aria-describedby="pasos-ayuda" onChange={(e) => set(e.target.value)} onBlur={listo} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} /></div>
+    </div>
+  );
+  const ayuda = !okP ? `Pasos: escribe solo el número, hasta ${fmt(PASOS_MAX)}.`
+    : !okK ? `Km: escribe un número de 0 a ${KM_MAX}, como 6.4.`
+    : k ? `Con tus km y tu peso (${perfil.peso} kg). No cambia tu meta.`
+    : `Sin km se estiman con tus pasos y tu estatura. No cambia tu meta.`;
+
   return (
     <section className="card" aria-label="Pasos del día">
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
-        <div className="field" style={{ flex: 1 }}>
-          <label htmlFor="pasos" className="label">Pasos</label>
-          <div className="box"><input id="pasos" inputMode="numeric" placeholder="0" value={txt} aria-invalid={!ok} aria-describedby="pasos-ayuda" onChange={(e) => setTxt(e.target.value)} onBlur={listo} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} /></div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, paddingBottom: 6 }}>
-          <span><b key={quemadas} className="cambia" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em" }}>{fmt(quemadas)}</b> <span className="muted">kcal</span></span>
-          <span className="sub">quemadas caminando</span>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 12 }}>
+        {campo("pasos", "Pasos", tp, setTp, okP, () => (okP ? np !== pasos && onPasos(np) : setTp(pasos ? String(pasos) : "")), "0", "numeric")}
+        {/* el placeholder enseña los km estimados, para comparar con los de tu app */}
+        {campo("km", "Km", tk, setTk, okK, () => (okK ? nk !== km && onKm(nk) : setTk(km ? String(km) : "")), p ? kmDePasos(p, perfil.altura).toFixed(1) : "0", "decimal")}
       </div>
-      <span id="pasos-ayuda" className="sub">{ok ? `Según tu peso (${perfil.peso} kg) y estatura. No cambia tu meta.` : `Escribe solo el número, hasta ${fmt(PASOS_MAX)}.`}</span>
+      <div className="kv">
+        <span className="muted">Quemadas caminando</span>
+        <span><b key={quemadas} className="cambia" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em" }}>{fmt(quemadas)}</b> <span className="muted">kcal</span></span>
+      </div>
+      <span id="pasos-ayuda" className="sub">{ayuda}</span>
     </section>
   );
 }
 
-export default function Hoy({ dia, log, dias, meta, perfil, pasos, pref, comidas, onOrden, onAdd, onRemove, onEscribir, onPasos }: Props) {
+export default function Hoy({ dia, log, dias, meta, perfil, pasos, km, pref, comidas, onOrden, onAdd, onRemove, onEscribir, onPasos, onKm }: Props) {
   const tiempos = mostrar(comidas, log.map((e) => e.meal));
   const [abierto, setAbierto] = useState<MealId | null>(null);
   // orden recién soltado, mientras se guarda
@@ -181,7 +194,7 @@ export default function Hoy({ dia, log, dias, meta, perfil, pasos, pref, comidas
       </section>
     ),
     // key: al cambiar de día o llegar otro valor de la nube, el campo arranca con el nuevo
-    pasos: <Pasos key={`${dia}${pasos}`} perfil={perfil} pasos={pasos} onPasos={onPasos} />,
+    pasos: <Pasos key={`${dia}|${pasos}|${km}`} perfil={perfil} pasos={pasos} km={km} onPasos={onPasos} onKm={onKm} />,
     semana: (
       <section className="card" aria-label="Últimos 7 días" style={{ borderRadius: "var(--r-lg)", padding: "var(--s3) var(--s4)", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <div className="week">

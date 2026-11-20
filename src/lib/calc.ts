@@ -64,11 +64,11 @@ export function calcMacros(tdee: number, ajuste: number, peso: number, actividad
   return { kcal_objetivo: kcalObjetivo, prot, carbs, grasas, pctProt, pctCarbs, pctGrasas };
 }
 
-// Caminar, sin lo que ya cuenta el basal: ACSM ≈ 0.5 kcal por kg y km; zancada ≈ 41.4 % de la estatura.
-export function kcalPasos(pasos: number, peso: number, altura: number) {
-  const km = (pasos * altura * 0.414) / 100_000;
-  return Math.round(km * peso * 0.5);
-}
+// Zancada ≈ 41.4 % de la estatura; solo se usa si no escribiste los km.
+export const kmDePasos = (pasos: number, altura: number) => (pasos * altura * 0.414) / 100_000;
+
+// Caminar, sin lo que ya cuenta el basal: ACSM ≈ 0.5 kcal por kg y km.
+export const kcalCaminando = (km: number, peso: number) => Math.round(km * peso * 0.5);
 
 export function plan(p: Perfil) {
   const tmb = calcMifflin(p.peso, p.altura, p.edad, p.sexo);

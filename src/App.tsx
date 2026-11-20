@@ -42,6 +42,7 @@ export default function App() {
   const [menu, setMenu] = useState<MenuSemanal>({});
   const [log, setLog] = useState<Entrada[]>([]);
   const [pasos, setPasos] = useState(0);
+  const [km, setKm] = useState(0);
   const [dias, setDias] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<Tab>("hoy");
   const [meal, setMeal] = useState<MealId>("desayuno");
@@ -84,14 +85,14 @@ export default function App() {
 
   async function cargar() {
     const d = hoy();
-    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph, cm, dv, ps] = await Promise.all([
+    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph, cm, dv, ps, kms] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
       load<Record<string, Record<string, Item>>>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
       load<Color>("color", "neutro"), load<Base>("base", VACIA), load<string>("token", ""),
       load<Texto>("texto", "normal"), load<Densidad>("densidad", "comoda"), load<PrefHoy | null>("hoy", null), load<PrefComidas | null>("comidas", null), load<boolean>("dev", false),
-      load<number>(`pasos:${d}`, 0),
+      load<number>(`pasos:${d}`, 0), load<number>(`km:${d}`, 0),
     ]);
-    setPasos(ps);
+    setPasos(ps); setKm(kms);
     setTexto(tx); setDensidad(dn); setPrefHoy(normalizarHoy(ph)); setComidas(normalizarComidas(cm)); setDev(dv);
     setBase(b); setToken(tk);
     setPerfil(p); setMios(m); setRecetas(r); setMenu(normalizarMenu(mn)); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
@@ -299,10 +300,10 @@ export default function App() {
     setDias(ds);
   }
 
-  async function guardarPasos(n: number) {
-    if (n) await save(`pasos:${dia}`, n);
-    else await remove(`pasos:${dia}`);
-    setPasos(n);
+  async function guardarDelDia(clave: "pasos" | "km", n: number) {
+    if (n) await save(`${clave}:${dia}`, n);
+    else await remove(`${clave}:${dia}`);
+    (clave === "pasos" ? setPasos : setKm)(n);
   }
 
   async function guardarPerfil(p: Perfil) {
@@ -380,7 +381,7 @@ export default function App() {
         }}
         onTouchEnd={finToque}>
       {tab === "hoy" && (
-        <Hoy dia={dia} log={log} dias={dias} meta={meta} perfil={perfil} pasos={pasos} onPasos={guardarPasos} pref={prefHoy} comidas={comidas}
+        <Hoy dia={dia} log={log} dias={dias} meta={meta} perfil={perfil} pasos={pasos} km={km} onPasos={(n) => guardarDelDia("pasos", n)} onKm={(n) => guardarDelDia("km", n)} pref={prefHoy} comidas={comidas}
           onOrden={async (orden) => { const h = { ...prefHoy, orden }; await save("hoy", h); setPrefHoy(h); }}
           onAdd={(m) => { setMeal(m); irA("alimentos"); }}
           onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }}

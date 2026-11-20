@@ -2,6 +2,9 @@
 
 Cada versión necesita su sección aquí: es lo que se ve en Configuración → Actualizaciones.
 
+## 0.7.2
+- Hoy: en la tarjeta de Pasos ahora también puedes escribir los km que caminaste (los que marca tu reloj o tu app). Con km, las kcal salen de esa distancia; sin km se estiman con tus pasos y tu estatura, y el campo te enseña esa estimación para que la compares.
+
 ## 0.7.1
 - Objetivos: elige de cuánto es tu déficit (perder grasa) o tu volumen (ganar músculo), en kcal por día. Si no lo cambias se queda como antes: 400 de déficit y 250 de volumen.
 - Hoy: nueva tarjeta de Pasos. Escribe los pasos que diste y ve cuántas kcal quemaste caminando según tu peso y estatura. Tu meta del día no cambia. Si ya tenías la app, la tarjeta aparece al final de Hoy: arrástrala a donde la quieras.

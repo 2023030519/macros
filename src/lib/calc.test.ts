@@ -1,11 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { kcalPasos, plan } from "./calc.ts";
+import { kcalCaminando, kmDePasos, plan } from "./calc.ts";
 
-test("kcal por pasos crecen con el peso; 0 pasos, 0 kcal", () => {
-  assert.equal(kcalPasos(10000, 78, 175), 283);
-  assert.ok(kcalPasos(10000, 100, 175) > kcalPasos(10000, 60, 175));
-  assert.equal(kcalPasos(0, 78, 175), 0);
+test("kcal caminando: por km y peso; los pasos se pasan a km con la estatura", () => {
+  assert.equal(kcalCaminando(kmDePasos(10000, 175), 78), 283);
+  assert.equal(kcalCaminando(8, 78), 312);
+  assert.ok(kcalCaminando(8, 100) > kcalCaminando(8, 60));
+  assert.equal(kcalCaminando(kmDePasos(0, 175), 78), 0);
 });
 
 test("78 kg, 175 cm, 30 años, hombre, moderado, perder grasa", () => {

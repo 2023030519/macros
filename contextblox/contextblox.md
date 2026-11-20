@@ -44,7 +44,7 @@ Referencia completa en `MASTER.md` (tesis aprobadas el 2026-11-03). Instrumento 
 
 Según `src/screens/` y `CHANGELOG.md`:
 
-1. **Hoy:** anillo y barras de los macros del día, pasos del día con las kcal quemadas caminando, tiempos de comida y tarjetas que se ordenan arrastrándolas.
+1. **Hoy:** anillo y barras de los macros del día, pasos y km del día con las kcal quemadas caminando, tiempos de comida y tarjetas que se ordenan arrastrándolas.
 2. **Alimentos, Recetas y Menú:** la base de alimentos (con la compartida), recetas con foto y menú semanal.
 3. **Objetivos:** requerimientos diarios con el detalle del cálculo y un simulador. Con "Perder grasa" o "Ganar músculo" se elige el tamaño del déficit o del volumen (0 a 1,500 kcal).
 4. **Escribir:** registrar en lenguaje natural ("desayuné 2 huevos y 2 tortillas"), "¿qué ceno?" y leer etiquetas con foto.
@@ -66,6 +66,7 @@ En `supabase/migrations/aplicadas/` (corridas) y `supabase/migrations/nuevas/` (
 
 El historial anterior está en `CHANGELOG.md` (por versión) y en `git log`.
 
+- **2026-11-20** · 0.7.2: km en la tarjeta Pasos: se guardan en `km:<día>` (también se sincroniza). Con km las kcal salen de `kcalCaminando(km, peso)`; sin km se estiman con `kmDePasos` (pasos y estatura), y el campo vacío enseña esa estimación para compararla con la app del cel. Lo pidió el dueño porque su app daba otro resultado.
 - **2026-11-20** · Publicada la 0.7.1 (release v0.7.1 con APK y .exe; el CI pasó) e instalada en la compu. Falta descargarla y probarla en el cel.
 - **2026-11-20** · Tarjeta "Pasos" en Hoy: el usuario escribe sus pasos (los del reloj o la app de salud; el dueño eligió no leer Health Connect) y se guardan en `pasos:<día>`, que también se sincroniza. Las kcal salen de `kcalPasos` en `calc.ts` (0.5 kcal por kg y km, sin contar el basal; zancada = 41.4 % de la estatura) y solo se muestran: la meta no cambia, porque el nivel de actividad ya cuenta el movimiento. A quien ya tenía la app la tarjeta le aparece al final de Hoy. Mantener presionado un campo de Hoy ya no arrastra la tarjeta. Falta probarlo en el cel.
 - **2026-11-20** · Déficit y volumen a elección del usuario: `Perfil` tiene `deficit` y `volumen` opcionales (kcal positivas) y `ajusteKcal` en `calc.ts` los usa; sin valor siguen −400 / +250, así que los perfiles guardados no cambian. El campo está en Objetivos (se guarda al salir del campo) y en Tus datos/Simulador.

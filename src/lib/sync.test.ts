@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { sincronizable, soloAqui } from "./sync.ts";
 
 test("comparte datos, no apariencia ni llaves", () => {
-  for (const k of ["perfil", "mios", "recetas", "menu", "log:2026-11-11", "pasos:2026-11-11"]) assert.ok(sincronizable(k), k);
+  for (const k of ["perfil", "mios", "recetas", "menu", "log:2026-11-11", "pasos:2026-11-11", "km:2026-11-11"]) assert.ok(sincronizable(k), k);
   for (const k of ["tema", "color", "gemini", "token", "base", "sync:desde", "sb-x-auth-token"]) assert.ok(!sincronizable(k), k);
 });
 
