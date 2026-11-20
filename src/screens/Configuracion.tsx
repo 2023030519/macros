@@ -15,7 +15,7 @@ const COLORES: [Color, string, string][] = [
   ["neutro", "Neutro", "var(--text)"], ["azul", "Azul", "#2456D6"], ["morado", "Morado", "#6B3FD0"], ["rosa", "Rosa", "#C0266F"],
   ["verde", "Verde", "#147A57"], ["rojo", "Rojo", "#C2262E"], ["turquesa", "Turquesa", "#0B7A85"], ["tierra", "Tierra", "#8A5A2B"],
 ];
-const NOMBRE_TARJETA: Record<Tarjeta, string> = { calorias: "Calorías y macros", semana: "Últimos 7 días", comidas: "Comidas" };
+const NOMBRE_TARJETA: Record<Tarjeta, string> = { calorias: "Calorías y macros", pasos: "Pasos", semana: "Últimos 7 días", comidas: "Comidas" };
 
 // Logo: el anillo de tres macros (assets_Rayblox/iconos/macrOS/2), con los colores del tema.
 const Logo = () => (

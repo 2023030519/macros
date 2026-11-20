@@ -1,21 +1,50 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MealId } from "../data/foods.ts";
 import { mostrar, type PrefComidas } from "../lib/comidas.ts";
-import type { plan } from "../lib/calc.ts";
+import { kcalPasos, type Perfil, type plan } from "../lib/calc.ts";
 import { racha, sumarDias } from "../lib/dias.ts";
 import { sumar } from "../lib/receta.ts";
 import type { Entrada } from "../lib/store.ts";
 import { reubicar, type PrefHoy, type Tarjeta } from "../lib/hoy.ts";
 import { Chevron, Close, Flame, Macros, Plus, barra, cap, fmt, salir } from "../ui.tsx";
 
-type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; pref: PrefHoy; comidas: PrefComidas; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void; onEscribir: () => void };
+type Props = { dia: string; log: Entrada[]; dias: Set<string>; meta: ReturnType<typeof plan>; perfil: Perfil; pasos: number; pref: PrefHoy; comidas: PrefComidas; onOrden: (o: Tarjeta[]) => void; onAdd: (m: MealId) => void; onRemove: (id: string) => void; onEscribir: () => void; onPasos: (n: number) => void };
 
 const fecha = (dia: string) => {
   const [y, m, d] = dia.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 
-export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAdd, onRemove, onEscribir }: Props) {
+const PASOS_MAX = 100_000;
+
+// Pasos del día escritos a mano (los del reloj o la app de salud). Se guardan al salir del campo; las kcal se ven mientras escribes.
+function Pasos({ perfil, pasos, onPasos }: { perfil: Perfil; pasos: number; onPasos: (n: number) => void }) {
+  const [txt, setTxt] = useState(pasos ? String(pasos) : "");
+  const n = Number(txt.replace(/[\s,.]/g, "")); // "8,500" o "8 500" son 8500
+  const ok = Number.isInteger(n) && n >= 0 && n <= PASOS_MAX;
+  const listo = () => {
+    if (!ok) return setTxt(pasos ? String(pasos) : "");
+    if (n !== pasos) onPasos(n);
+  };
+  const quemadas = kcalPasos(ok ? n : pasos, perfil.peso, perfil.altura);
+  return (
+    <section className="card" aria-label="Pasos del día">
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
+        <div className="field" style={{ flex: 1 }}>
+          <label htmlFor="pasos" className="label">Pasos</label>
+          <div className="box"><input id="pasos" inputMode="numeric" placeholder="0" value={txt} aria-invalid={!ok} aria-describedby="pasos-ayuda" onChange={(e) => setTxt(e.target.value)} onBlur={listo} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} /></div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, paddingBottom: 6 }}>
+          <span><b key={quemadas} className="cambia" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em" }}>{fmt(quemadas)}</b> <span className="muted">kcal</span></span>
+          <span className="sub">quemadas caminando</span>
+        </div>
+      </div>
+      <span id="pasos-ayuda" className="sub">{ok ? `Según tu peso (${perfil.peso} kg) y estatura. No cambia tu meta.` : `Escribe solo el número, hasta ${fmt(PASOS_MAX)}.`}</span>
+    </section>
+  );
+}
+
+export default function Hoy({ dia, log, dias, meta, perfil, pasos, pref, comidas, onOrden, onAdd, onRemove, onEscribir, onPasos }: Props) {
   const tiempos = mostrar(comidas, log.map((e) => e.meal));
   const [abierto, setAbierto] = useState<MealId | null>(null);
   // orden recién soltado, mientras se guarda
@@ -46,7 +75,8 @@ export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAd
     const fin = () => { clearTimeout(timer); el = null; activo = false; };
     const inicio = (e: TouchEvent) => {
       const t = (e.target as Element).closest<HTMLElement>(".tarjeta");
-      if (!t || e.touches.length > 1 || main.querySelector(".soltando")) return;
+      // en un campo, mantener presionado es para seleccionar o pegar, no para arrastrar
+      if (!t || (e.target as Element).closest("input") || e.touches.length > 1 || main.querySelector(".soltando")) return;
       el = t; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
       timer = window.setTimeout(() => {
         cajas = [...main.querySelectorAll<HTMLElement>(".tarjeta")].map((c) => { const r = c.getBoundingClientRect(); return { el: c, top: r.top, h: r.height }; });
@@ -88,7 +118,7 @@ export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAd
       if (activo) cajas.forEach((c) => { c.el.style.transform = ""; c.el.classList.remove("arrastrando"); });
       fin();
     };
-    const menu = (e: Event) => { if ((e.target as Element).closest(".tarjeta")) e.preventDefault(); };
+    const menu = (e: Event) => { if ((e.target as Element).closest(".tarjeta") && !(e.target as Element).closest("input")) e.preventDefault(); };
     main.addEventListener("touchstart", inicio, { passive: true });
     main.addEventListener("touchmove", mover, { passive: false });
     main.addEventListener("touchend", soltar);
@@ -150,6 +180,8 @@ export default function Hoy({ dia, log, dias, meta, pref, comidas, onOrden, onAd
         </div>
       </section>
     ),
+    // key: al cambiar de día o llegar otro valor de la nube, el campo arranca con el nuevo
+    pasos: <Pasos key={`${dia}${pasos}`} perfil={perfil} pasos={pasos} onPasos={onPasos} />,
     semana: (
       <section className="card" aria-label="Últimos 7 días" style={{ borderRadius: "var(--r-lg)", padding: "var(--s3) var(--s4)", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <div className="week">

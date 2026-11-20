@@ -1,5 +1,5 @@
 // Tarjetas de la pantalla Hoy que se pueden ocultar y reordenar (Configuración → Pantalla Hoy).
-export const TARJETAS = ["calorias", "semana", "comidas"] as const;
+export const TARJETAS = ["calorias", "pasos", "semana", "comidas"] as const;
 export type Tarjeta = (typeof TARJETAS)[number];
 export type PrefHoy = { orden: Tarjeta[]; ocultas: Tarjeta[] };
 export const HOY_DEFAULT: PrefHoy = { orden: [...TARJETAS], ocultas: [] };

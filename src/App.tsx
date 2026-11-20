@@ -41,6 +41,7 @@ export default function App() {
   const [recetas, setRecetas] = useState<Record<string, Receta>>({});
   const [menu, setMenu] = useState<MenuSemanal>({});
   const [log, setLog] = useState<Entrada[]>([]);
+  const [pasos, setPasos] = useState(0);
   const [dias, setDias] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<Tab>("hoy");
   const [meal, setMeal] = useState<MealId>("desayuno");
@@ -83,12 +84,14 @@ export default function App() {
 
   async function cargar() {
     const d = hoy();
-    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph, cm, dv] = await Promise.all([
+    const [p, m, r, mn, l, ds, t, oc, co, b, tk, tx, dn, ph, cm, dv, ps] = await Promise.all([
       load<Perfil | null>("perfil", null), load<Record<string, FoodRow>>("mios", {}), load<Record<string, Receta>>("recetas", {}),
       load<Record<string, Record<string, Item>>>("menu", {}), load<Entrada[]>(`log:${d}`, []), diasRegistrados(), load<Tema>("tema", "sistema"), load<string[]>("ocultos", []),
       load<Color>("color", "neutro"), load<Base>("base", VACIA), load<string>("token", ""),
       load<Texto>("texto", "normal"), load<Densidad>("densidad", "comoda"), load<PrefHoy | null>("hoy", null), load<PrefComidas | null>("comidas", null), load<boolean>("dev", false),
+      load<number>(`pasos:${d}`, 0),
     ]);
+    setPasos(ps);
     setTexto(tx); setDensidad(dn); setPrefHoy(normalizarHoy(ph)); setComidas(normalizarComidas(cm)); setDev(dv);
     setBase(b); setToken(tk);
     setPerfil(p); setMios(m); setRecetas(r); setMenu(normalizarMenu(mn)); setLog(l); setDias(ds); setTema(t); setOcultos(oc); setColor(co); setDia(d); setReady(true);
@@ -296,6 +299,12 @@ export default function App() {
     setDias(ds);
   }
 
+  async function guardarPasos(n: number) {
+    if (n) await save(`pasos:${dia}`, n);
+    else await remove(`pasos:${dia}`);
+    setPasos(n);
+  }
+
   async function guardarPerfil(p: Perfil) {
     await save("perfil", p);
     setPerfil(p);
@@ -371,7 +380,7 @@ export default function App() {
         }}
         onTouchEnd={finToque}>
       {tab === "hoy" && (
-        <Hoy dia={dia} log={log} dias={dias} meta={meta} pref={prefHoy} comidas={comidas}
+        <Hoy dia={dia} log={log} dias={dias} meta={meta} perfil={perfil} pasos={pasos} onPasos={guardarPasos} pref={prefHoy} comidas={comidas}
           onOrden={async (orden) => { const h = { ...prefHoy, orden }; await save("hoy", h); setPrefHoy(h); }}
           onAdd={(m) => { setMeal(m); irA("alimentos"); }}
           onRemove={async (id) => { await guardarLog(log.filter((e) => e.id !== id)); avisar("Quitado"); }}
@@ -423,7 +432,7 @@ export default function App() {
             avisar("Menú agregado a hoy");
           }} />
       )}
-      {tab === "objetivos" && <Objetivos perfil={perfil} onObjetivo={(o) => guardarPerfil({ ...perfil, objetivo: o })} onEditar={() => setEditando(true)} onSimular={() => setSimulando(true)} onConfig={() => setConfig(true)} hayNueva={!!apkNuevo(upd, __VERSION__)} />}
+      {tab === "objetivos" && <Objetivos perfil={perfil} onPerfil={guardarPerfil} onEditar={() => setEditando(true)} onSimular={() => setSimulando(true)} onConfig={() => setConfig(true)} hayNueva={!!apkNuevo(upd, __VERSION__)} />}
       </div>
 
       <nav className="tabs" aria-label="Navegación principal">

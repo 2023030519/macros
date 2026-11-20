@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mover, normalizarHoy, reubicar } from "./hoy.ts";
 
 test("lo guardado se limpia y completa", () => {
-  assert.deepEqual(normalizarHoy(null), { orden: ["calorias", "semana", "comidas"], ocultas: [] });
+  assert.deepEqual(normalizarHoy(null), { orden: ["calorias", "pasos", "semana", "comidas"], ocultas: [] });
   assert.deepEqual(normalizarHoy({ orden: ["comidas", "x" as never, "comidas"], ocultas: ["semana", "y" as never] }),
-    { orden: ["comidas", "calorias", "semana"], ocultas: ["semana"] });
+    { orden: ["comidas", "calorias", "pasos", "semana"], ocultas: ["semana"] });
 });
 
 test("mover cambia de lugar y no se sale de la lista", () => {

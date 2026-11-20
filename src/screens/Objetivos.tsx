@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AJUSTE_KCAL, plan, type Actividad, type Objetivo, type Perfil, type Sexo } from "../lib/calc.ts";
+import { AJUSTE_MAX, ajusteKcal, plan, type Actividad, type Objetivo, type Perfil, type Sexo } from "../lib/calc.ts";
 import { Chevron, Opciones, Seg, barra, fmt } from "../ui.tsx";
 
 const ACTIVIDADES: [Actividad, string, string][] = [
@@ -10,12 +10,34 @@ const ACTIVIDADES: [Actividad, string, string][] = [
   ["muy_activo", "Muy alta", "Trabajo físico o doble sesión"],
 ];
 const OBJETIVOS: [Objetivo, string][] = [["perder_grasa", "Perder grasa"], ["mantenimiento", "Mantener"], ["ganar_musculo", "Ganar músculo"]];
-const ajusteTxt = (o: Objetivo) => (AJUSTE_KCAL[o] > 0 ? `superávit +${AJUSTE_KCAL[o]}` : AJUSTE_KCAL[o] < 0 ? `déficit −${-AJUSTE_KCAL[o]}` : "sin ajuste");
+const ajusteTxt = (a: number) => (a > 0 ? `superávit +${a}` : a < 0 ? `déficit −${-a}` : "sin ajuste");
+const conAjuste = (p: Perfil, kcal: number): Perfil => (p.objetivo === "perder_grasa" ? { ...p, deficit: kcal } : { ...p, volumen: kcal });
 
-export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onConfig, hayNueva }: {
-  perfil: Perfil; onObjetivo: (o: Objetivo) => void; onEditar: () => void; onSimular: () => void; onConfig: () => void; hayNueva: boolean;
+// Tamaño del déficit o del volumen. Se confirma al salir del campo: en Objetivos cada guardado también sube a la nube.
+function Ajuste({ objetivo, kcal, onChange }: { objetivo: Objetivo; kcal: number; onChange: (kcal: number) => void }) {
+  const [txt, setTxt] = useState(String(kcal));
+  const n = Math.round(Number(txt.replace(",", ".")));
+  const ok = txt.trim() !== "" && Number.isFinite(n) && n >= 0 && n <= AJUSTE_MAX;
+  const listo = () => {
+    if (!ok) return setTxt(String(kcal));
+    setTxt(String(n));
+    if (n !== kcal) onChange(n);
+  };
+  const id = `aj-${objetivo}`;
+  return (
+    <div className="field">
+      <label htmlFor={id} className="label">{objetivo === "perder_grasa" ? "Tamaño del déficit" : "Tamaño del volumen"}</label>
+      <div className="box"><input id={id} inputMode="numeric" value={txt} aria-describedby={`${id}-ayuda`} aria-invalid={!ok} onChange={(e) => setTxt(e.target.value)} onBlur={listo} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} /><span className="unit">kcal/día</span></div>
+      <span id={`${id}-ayuda`} className="sub">{ok ? `De 0 a ${fmt(AJUSTE_MAX)} kcal` : `Escribe un número de 0 a ${fmt(AJUSTE_MAX)}; si no, se queda en ${fmt(kcal)}`}</span>
+    </div>
+  );
+}
+
+export default function Objetivos({ perfil, onPerfil, onEditar, onSimular, onConfig, hayNueva }: {
+  perfil: Perfil; onPerfil: (p: Perfil) => void; onEditar: () => void; onSimular: () => void; onConfig: () => void; hayNueva: boolean;
 }) {
   const r = plan(perfil);
+  const aj = ajusteKcal(perfil);
   const act = ACTIVIDADES.find((a) => a[0] === perfil.actividad)!;
   return (
     <main className="screen">
@@ -37,9 +59,11 @@ export default function Objetivos({ perfil, onObjetivo, onEditar, onSimular, onC
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span className="label">Requerimiento diario</span>
           <span><b key={r.kcal_objetivo} className="cambia" style={{ fontSize: 40, fontWeight: 700, letterSpacing: "-0.04em" }}>{fmt(r.kcal_objetivo)}</b> <span className="muted">kcal</span></span>
-          <span key={perfil.objetivo} className="sub aparece">Mantenimiento {fmt(r.tdee)} · {ajusteTxt(perfil.objetivo)} kcal</span>
+          <span key={perfil.objetivo} className="sub aparece">Mantenimiento {fmt(r.tdee)} · {ajusteTxt(aj)} kcal</span>
         </div>
-        <Seg label="Objetivo" value={perfil.objetivo} options={OBJETIVOS} onChange={onObjetivo} />
+        <Seg label="Objetivo" value={perfil.objetivo} options={OBJETIVOS} onChange={(o) => onPerfil({ ...perfil, objetivo: o })} />
+        {/* key: si el valor cambia desde otro dispositivo o de objetivo, el campo arranca con el nuevo */}
+        {perfil.objetivo !== "mantenimiento" && <Ajuste key={`${perfil.objetivo}${aj}`} objetivo={perfil.objetivo} kcal={Math.abs(aj)} onChange={(k) => onPerfil(conAjuste(perfil, k))} />}
         <details className="fold">
           <summary style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 44 }}>
             <span className="label">Cómo se calcula</span><span className="chev" aria-hidden="true"><Chevron /></span>
@@ -74,8 +98,10 @@ export function TusDatos({ perfil, onSave, onCancel, simular }: { perfil: Perfil
   const [actividad, setActividad] = useState<Actividad>(perfil?.actividad ?? "moderado");
   const [objetivo, setObjetivo] = useState<Objetivo>(perfil?.objetivo ?? "mantenimiento");
   const [v, setV] = useState({ edad: String(perfil?.edad ?? ""), peso: String(perfil?.peso ?? ""), altura: String(perfil?.altura ?? "") });
+  const [ajustes, setAjustes] = useState({ deficit: perfil?.deficit, volumen: perfil?.volumen });
   const n = (s: string) => Number(s.replace(",", "."));
-  const p: Perfil = { sexo, actividad, objetivo, edad: n(v.edad), peso: n(v.peso), altura: n(v.altura) };
+  const p: Perfil = { sexo, actividad, objetivo, edad: n(v.edad), peso: n(v.peso), altura: n(v.altura), ...ajustes };
+  const aj = ajusteKcal(p);
   // misma validación que la calculadora anterior: los tres campos con valor
   const ok = [p.edad, p.peso, p.altura].every((x) => Number.isFinite(x) && x > 0);
   const r = ok ? plan(p) : null;
@@ -109,6 +135,7 @@ export function TusDatos({ perfil, onSave, onCancel, simular }: { perfil: Perfil
       <div className="field"><span className="label">Objetivo</span>
         <Seg label="Objetivo" value={objetivo} options={OBJETIVOS} onChange={setObjetivo} />
       </div>
+      {objetivo !== "mantenimiento" && <Ajuste key={objetivo} objetivo={objetivo} kcal={Math.abs(aj)} onChange={(k) => { const c = conAjuste(p, k); setAjustes({ deficit: c.deficit, volumen: c.volumen }); }} />}
 
       <section className="result" aria-label="Resultado" aria-live="polite">
         <span className="dim" style={{ fontSize: 13, fontWeight: 600 }}>Tu requerimiento</span>
@@ -116,7 +143,7 @@ export function TusDatos({ perfil, onSave, onCancel, simular }: { perfil: Perfil
         <div className="grid3">
           <div><span className="dim">Basal</span><b>{r ? fmt(r.tmb) : "—"}</b></div>
           <div><span className="dim">Mantenimiento</span><b>{r ? fmt(r.tdee) : "—"}</b></div>
-          <div><span className="dim">Ajuste</span><b>{AJUSTE_KCAL[objetivo] > 0 ? "+" : ""}{AJUSTE_KCAL[objetivo]}</b></div>
+          <div><span className="dim">Ajuste</span><b>{aj > 0 ? "+" : ""}{aj}</b></div>
         </div>
         {r && (
           <div className="grid3">

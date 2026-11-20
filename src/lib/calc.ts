@@ -24,7 +24,16 @@ export const GRAMOS_POR_KILO = {
 export type Actividad = keyof typeof ACTIVITY_FACTORS;
 export type Objetivo = keyof typeof AJUSTE_KCAL;
 export type Sexo = "hombre" | "mujer";
-export type Perfil = { peso: number; altura: number; edad: number; sexo: Sexo; actividad: Actividad; objetivo: Objetivo };
+// deficit/volumen: kcal que elige el usuario (positivas); sin valor se usa AJUSTE_KCAL
+export type Perfil = { peso: number; altura: number; edad: number; sexo: Sexo; actividad: Actividad; objetivo: Objetivo; deficit?: number; volumen?: number };
+
+export const AJUSTE_MAX = 1500; // más que esto es casi seguro un error de dedo
+
+export function ajusteKcal(p: Pick<Perfil, "objetivo" | "deficit" | "volumen">) {
+  if (p.objetivo === "perder_grasa") return -(p.deficit ?? -AJUSTE_KCAL.perder_grasa);
+  if (p.objetivo === "ganar_musculo") return p.volumen ?? AJUSTE_KCAL.ganar_musculo;
+  return 0;
+}
 
 export function calcMifflin(peso: number, altura: number, edad: number, sexo: Sexo) {
   const base = 10 * peso + 6.25 * altura - 5 * edad;
@@ -35,8 +44,8 @@ export function calcTDEE(tmb: number, actividad: Actividad) {
   return Math.round(tmb * ACTIVITY_FACTORS[actividad]);
 }
 
-export function calcMacros(tdee: number, objetivo: Objetivo, peso: number, actividad: Actividad) {
-  const kcalObjetivo = tdee + AJUSTE_KCAL[objetivo];
+export function calcMacros(tdee: number, ajuste: number, peso: number, actividad: Actividad) {
+  const kcalObjetivo = tdee + ajuste;
 
   const factores = GRAMOS_POR_KILO[actividad];
   const prot = Math.round(peso * factores.prot);
@@ -55,8 +64,14 @@ export function calcMacros(tdee: number, objetivo: Objetivo, peso: number, activ
   return { kcal_objetivo: kcalObjetivo, prot, carbs, grasas, pctProt, pctCarbs, pctGrasas };
 }
 
+// Caminar, sin lo que ya cuenta el basal: ACSM ≈ 0.5 kcal por kg y km; zancada ≈ 41.4 % de la estatura.
+export function kcalPasos(pasos: number, peso: number, altura: number) {
+  const km = (pasos * altura * 0.414) / 100_000;
+  return Math.round(km * peso * 0.5);
+}
+
 export function plan(p: Perfil) {
   const tmb = calcMifflin(p.peso, p.altura, p.edad, p.sexo);
   const tdee = calcTDEE(tmb, p.actividad);
-  return { tmb: Math.round(tmb), tdee, ...calcMacros(tdee, p.objetivo, p.peso, p.actividad) };
+  return { tmb: Math.round(tmb), tdee, ...calcMacros(tdee, ajusteKcal(p), p.peso, p.actividad) };
 }

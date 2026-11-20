@@ -2,6 +2,10 @@
 
 Cada versión necesita su sección aquí: es lo que se ve en Configuración → Actualizaciones.
 
+## 0.7.1
+- Objetivos: elige de cuánto es tu déficit (perder grasa) o tu volumen (ganar músculo), en kcal por día. Si no lo cambias se queda como antes: 400 de déficit y 250 de volumen.
+- Hoy: nueva tarjeta de Pasos. Escribe los pasos que diste y ve cuántas kcal quemaste caminando según tu peso y estatura. Tu meta del día no cambia. Si ya tenías la app, la tarjeta aparece al final de Hoy: arrástrala a donde la quieras.
+
 ## 0.7.0
 - Escribir (botón en Hoy): escribe lo que comiste, como “desayuné 2 huevos y 2 tortillas”, y se separa en alimentos, cantidades y tiempos de comida para agregarlo de un toque. Si un nombre se parece a varios, eliges cuál; lo que no está en tu base se avisa.
 - Pregunta “¿qué ceno?” en Escribir y te propone de tus recetas con la porción que le toca a esa comida según lo que te falta del día.
